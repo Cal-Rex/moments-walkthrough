@@ -28,6 +28,18 @@
         - using custom favicon
         - using fontawesome with react (add the script tag to index in the public folder)
     - setting up the components directory
+
+4. [Using Custom CSS in React](#using-custom-css-in-react)
+    - Video: https://youtu.be/ylLQmEouIsU
+        - why you should have a css file for each component
+    - using Google fonts (imported in the index html)
+    - additional materials
+        - [Using CSS Modules to style React Components](https://medium.com/@ralph1786/using-css-modules-in-react-app-c2079eadbb87)
+        - [React Documentation: Adding a CSS Modules Stylesheet](https://create-react-app.dev/docs/adding-a-css-modules-stylesheet/)
+
+5. [Routing in React](#routing-in-react)
+    - Video: https://youtu.be/lORLzImNzis
+    - 
     
 
 _________________________
@@ -127,27 +139,179 @@ go to the bootstrap docs and just lift a navbar component and paste it in
 > All our main site content will be wrapped in Bootstrap Containers to keep it from pushing out too far to the edges on larger screens, so to keep our navbar elements to the same sizes, we’ll wrap the contents inside it in a container as well.
 - example:
 ```jsx
+import { Container, Navbar, Nav } from 'react-bootstrap';
 import React from 'react'
+import logo from '../assets/logo.png'
 
 const NavBar = () => {
-    // wrapped in a <container>
-  return <Navbar bg="light" expand="lg">
-    
-    <container>
-        <Navbar.Brand href="#home">React-Bootstrap</Navbar.Brand>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
-        <Navbar.Collapse id="basic-navbar-nav">
-            <Nav className="mr-auto">
-            <Nav.Link href="#home">Home</Nav.Link>
-            <Nav.Link href="#link">Link</Nav.Link>
-            </Nav>
-            </Navbar.Collapse>
-    </container>
+    return (
+        <Navbar expand="md" fixed="top">
+            <Container>
+                <Navbar.Brand>
+                    <img src={logo} alt="logo" height="45"/>
+                </Navbar.Brand>
 
-</Navbar>
+                <Navbar.Toggle aria-controls="basic-navbar-nav" />
+
+                <Navbar.Collapse id="basic-navbar-nav">
+                    <Nav className="ml-auto">
+                    <Nav.Link>
+                        <i className="fas fa-home"></i>Home
+                    </Nav.Link>
+                    <Nav.Link>
+                        <i className='fas fa-sign-in-alt'></i>Sign In
+                    </Nav.Link>
+                    <Nav.Link>
+                        <i className='fas fa-user-plus'></i>Sign up
+                        </Nav.Link>
+                    </Nav>
+                </Navbar.Collapse>
+                
+            </Container>
+        </Navbar>
+    )
 }
 
 export default NavBar
 ```
 
-- running the app from here will compile errors, make sure to iport al the top level elements for the component, in this case, `container`, `Navbar` and `Nav` need to be imported
+- running the app from here will compile errors, make sure to iport al the top level elements for the component, in this case, `Container`, `Navbar` and `Nav` need to be imported
+
+_____________________________________________________________
+
+## Using custom CSS in React
+
+1. import fonts from google via the index
+    - `<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&display=swap" rel="stylesheet" /> `
+
+> Now we have imported our font, we want to apply  it to our entire application, so inside the src...  
+
+2. **delete** `App.css`
+
+3. create a new file: `App.module.css`
+
+> Note the naming convention here, module.css. The  module in the file name allows React to do some  
+clever things behind the scenes, which we will  talk about a bit later
+
+4. inside the new file, add:
+    ```css
+    .App {
+        font-family: "DM Sans", sans-serif;
+        background-color: #f8f8f8;
+        min-height: 100vh;
+    }
+    ```
+    - this creates global variables for the App
+
+5. import these new style rules into App.js
+    - `import styles from './App.module.css'`
+    - > This will import all the styles from the  App.module.css file and save it as an object named styles.
+
+6. apply the `.App` class style rule to the main div of the `App`.js
+    ```jsx
+    import styles from './App.module.css'
+    // css is now imported as a component called styles, 
+    // and the css classes and id's can be accessed using dot notation
+    import NavBar from './components/NavBar';
+
+    function App() {
+    return (
+        <div className={styles.App}>
+        <NavBar />
+        </div>
+    );
+    }
+
+    export default App;
+    ```
+
+7. create a new folder called `styles` in the `src` folder
+    - all oher CSS files will be stored here
+    - only the Css for the main app is stored on `src` level
+    - each app will have it's own style sheet
+
+8. create the css file for NavBar :  `NavBar.module.css`
+
+9. in that file create a class rule for `.NavBar`:
+    ```css
+    .NavBar {
+    background-color: #ffffff;
+    border: 1px solid #dadadf;
+    }
+    ```
+
+10. import the stylesheet into the NavBar app:
+    ```jsx
+    import styles from '../styles/NavBar.module.css'
+    ```
+
+11. apply the style to the `NavBar` element:
+    ```jsx
+    const NavBar = () => {
+        // see the className attribute
+    return (
+        <Navbar className={styles.NavBar} expand="md" fixed="top">
+            <Container>
+                <Navbar.Brand>
+        ...
+    ```
+    > Let’s inspect our code here and take a look  at what has been rendered in the browser. Have a look at the class names on the nav  element, this first one, NavBar_Navbar, then two more underscores and some random numbers  and letters called a hash. This hash is generated when our components are rendered because we used  the module.css file type, and is used to uniquely identify our component class names. So, we could  use the same class name in another component, but because of this unique hash, the css from that one  component can’t override another components css.
+
+12. paste in the source code provided for the walkthrough now that you kno how to do this manually
+
+__________________________________________________
+
+## Routing in React
+
+- how to handle routing in React so that different urls will render different pages
+
+1. Wrap all your main content in a `Container`
+```jsx
+import styles from './App.module.css'
+import NavBar from './components/NavBar';
+// import the container
+import { Container } from 'react-bootstrap';
+
+function App() {
+    // add the Container in the outer div, house the headings inside it
+  return (
+    <div className={styles.App}>
+      <NavBar />
+      <Container>
+        <h1>Home page</h1>
+        <h1>Sign in</h1>
+      </Container>
+    </div>
+  );
+}
+
+export default App;
+```
+
+2. Currently, the navbar is in a fixed position and is going to be overlapping the Container with the H1's so modify the css:
+```css
+/* create this style rule in App.module.css */
+.Main {
+    padding-top: 81px;
+}
+```
+
+3. apply the new rule to the container:
+```jsx
+...
+function App() {
+    // see, className for the container is the same as above.
+  return (
+    <div className={styles.App}>
+      <NavBar />
+      <Container className={styles.Main}>
+        <h1>Home page</h1>
+        <h1>Sign in</h1>
+      </Container>
+    </div>
+  );
+}
+...
+```
+
+4.
