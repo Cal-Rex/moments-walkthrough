@@ -16,6 +16,19 @@
         - side-by-side comparison of React bs and bs
     - [react bootstrap libraries (v4)](https://react-bootstrap-v4.netlify.app/)
     - [installing bootstrap](#installing-bootstrap)
+    - install snippets for faster coding
+
+## 2. Navigation and Authentication
+
+3. [Navigation: creating the NavBar](#navigation-creating-the-nav-bar)
+    - video: https://youtu.be/NeJ-pY4nsEI
+        - create navbar component
+        - importing and using images
+        - using bootstrap components: basics
+        - using custom favicon
+        - using fontawesome with react (add the script tag to index in the public folder)
+    - setting up the components directory
+    
 
 _________________________
 
@@ -90,4 +103,51 @@ _______________________________________________________
     import { Button } from 'react-bootstrap';
     ```
 
-5. 
+5. install ES7 snippets into gitpod:
+    1. in gitpod, in the extension side panel, search for: `ES7+ React/Redux/React-Native snippets` by dsznajder
+
+
+_____________________________________________________________________
+
+## Navigation: creating the nav bar
+
+create the navbar component with the following steps:
+
+1. Create a 'components' directory inside `src`
+2. add a `NavBar`.js file inside the components directory
+3. in the `NavBar`.js file, use the `rafce` snippet to create a functional component
+4. add some placeholder text to the navbar component
+5. export/import the nav bar into `App`.js
+6. remove the button component and import
+
+**adding a navbar into the component**
+
+go to the bootstrap docs and just lift a navbar component and paste it in
+
+> All our main site content will be wrapped in Bootstrap Containers to keep it from pushing out too far to the edges on larger screens, so to keep our navbar elements to the same sizes, we’ll wrap the contents inside it in a container as well.
+- example:
+```jsx
+import React from 'react'
+
+const NavBar = () => {
+    // wrapped in a <container>
+  return <Navbar bg="light" expand="lg">
+    
+    <container>
+        <Navbar.Brand href="#home">React-Bootstrap</Navbar.Brand>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+            <Nav className="mr-auto">
+            <Nav.Link href="#home">Home</Nav.Link>
+            <Nav.Link href="#link">Link</Nav.Link>
+            </Nav>
+            </Navbar.Collapse>
+    </container>
+
+</Navbar>
+}
+
+export default NavBar
+```
+
+- running the app from here will compile errors, make sure to iport al the top level elements for the component, in this case, `container`, `Navbar` and `Nav` need to be imported
