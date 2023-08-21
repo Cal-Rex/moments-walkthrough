@@ -3,14 +3,16 @@
 1. [getting set up](#getting-set-up)
     video: https://youtu.be/qANVPIWHfQg
     [page: (section 3)](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+RA101+2021_T3/courseware/70a8c55db0504bbdb5bcc3bfcf580080/953cd4e5015f483bb05263db3e740e19/)
-    - creating a React App in a workspace
+    - [creating a React App in a workspace](#creating-a-react-app-in-a-workspace)
     - [managing a `'error:03000086:digital envelope routines::initialization error'`](#managing-a-error03000086digital-envelope-routinesinitialization-error)
-
+    - [setting up and connecting to heroku](#setting-up-on-heroku)
 _________________________
 
 ## Getting set up
 
 for the walkthrough a template was provided, but here is a set up in general terms for reference/future:
+
+#### creating a react app in a workspace
 
 **walkthrough specific tutorial steps 1-2**
 1. create a new repo with the following [template](https://github.com/Code-Institute-Org/react-ci-template/generate)
@@ -41,4 +43,9 @@ for the walkthrough a template was provided, but here is a set up in general ter
 4. remove the react custom header, in `src > App.js` remove the `<header>` element from the return statement
 5. inside the return div, add an `<h1>` with `hello world`
 6. make the initial commit
-7. 
+
+#### setting up on heroku
+
+- create a new app
+- go to the deploy section of the new app, connect up github to the app
+- once connected, make a deployment to check its all connecting ok
