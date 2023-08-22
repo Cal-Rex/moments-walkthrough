@@ -67,6 +67,7 @@
     - sending request to API to check what user is logged in
     - Check what icons do display based on the current user
     - how to use the useContext hook
+    - [using JSX fragments](#jsx-fragments)
 
 
     
@@ -904,4 +905,235 @@ ________________________________________________________________________________
 - Check what icons do display based on the current user
 - how to use the useContext hook
 
+### sending request to API to check what user is logged in
+
+1. go to the App.js file and create a useState Hook and set its default value to `null`:
+```jsx
+function App() {
+    // this is the hook
+    const [currentUser, setCurrentUser] = useState(null)
+
+  return (...
+```
+
+> Now, we should make a network request to check  who the user is, based on their credentials in the cookie. To do that, we have to make a GET request to the `dj-rest-auth/user/` endpoint of our API. As is usually the case with network requests,  we’ll have to make it when the component mounts.
+
+2. create a `handleMount` `async` function
+    - inside create a `try/catch` block
+    - inside the `try` statement set a `const` of `{data}` that `await`s the restult of a `get` request made by `axios` to the endpoint `('dj-rest-auth/user/')`
+    - still inside the `try`, update the state of the `currentUser` with the requested data from the API
+    - inside the `catch` statement, make a `console.log` that prints the `err`
+    ```jsx
+    ...
+    function App() {
+        const [currentUser, setCurrentUser] = useState(null)
+
+        const handleMount = async () => {
+            try {
+            const {data} = await axios.get('dj-rest-auth/user/')
+            setCurrentUser(data)
+            } catch (err) {
+            console.log(err)
+            }
+        }
+        ...
+    ```
+
+3. now create a hook that handles on the component mounting. make a `useEffect` hook with an empty dependency array:
+    - inside it, call the `handleMount()` function just created
+    ```jsx
+    ...
+    const handleMount = async () => {
+        try {
+        const {data} = await axios.get('dj-rest-auth/user/')
+        setCurrentUser(data)
+        } catch (err) {
+        console.log(err)
+        }
+    }
+
+    useEffect(() => {
+        handleMount()
+    }, [])
+    // see the empty array above, thats the empty dependency
+    // that make the component only run once (on initial mount
+    // of the component)
+    ...
+    ```
+
+### how to use the useContext hook
+
+> As you can probably imagine, different pieces of UI will be displayed based on whether the user browsing our site is logged in or not.  This means that user state and data will be used all over the application. 
+
+> It would  be a real pain to have to pass both the currentUser variable and its setter function manually as props down the component tree. So, in order to make it more accessible, we’ll use the useContext hook. 
+
+The React documentation states that: 
+> context provides a convenient way to pass data required by many components in an application. 
+
+> Essentially, Context is designed to share data that can be considered “global” to any child components that need access to it. 
+
+4. in `App`.js, import `createContext` from `"react"` (same import line as `useEffect`/`useState`)
+
+5. underneath that, `export` a const of `CurrentUserContext` that has the value of `createContext()`
+
+6. underneath that, make another `export`, a const of `setCurrentUserContext` with the value of `createContext()`
+```jsx
+...
+import { useEffect, useState, createContext } from 'react';
+import axios from 'axios';
+
+// kind of like setting a big huge useState hook
+export const CurrentUserContext = createContext();
+export const SetCurrentUserContext = createContext();
+
+function App() {
+  ...
+```
+
+7. wrap the value of the `return` statement in `App`.js with `<CurrentUserContext.Provider><SetCurrentUserContext.Provider> </SetCurrentUserContext.Provider></CurrentUserContext.Provider>`
+
+8. add `value` props to both new tags
+    - the value of `CurrentUserContext.Provider` should be: `{CurrentUser}`
+    - the value of `SetCurrentUserContext.Provider` should be: `{setCurrentUser}`
+    ```jsx
+    ...
+    return (
+        // see the outer 2 components
+        <CurrentUserContext.Provider value={currentUser}>
+            <SetCurrentUserContext.Provider value={setCurrentUser}>
+            <div className={styles.App}>
+            
+            <NavBar />
+
+            <Container className={styles.Main}>
+
+                <Switch>
+                <Route exact path="/" render={() => <h1>Home page</h1>} />
+                <Route exact path="/signin" render={() => <h1><SignInForm /></h1>} />
+                <Route exact path="/signup" render={() => <SignUpForm />} />
+                </Switch>
+                
+            </Container>
+            </div>
+            </SetCurrentUserContext.Provider>
+        </CurrentUserContext.Provider>
+    );
+    ...
+    ```
+
+> these two Context Object Providers will allow both the currentUser value and the function to update it, to be available to every child component in our application.
+
+these 2 components are now considered `exposed` to any children elements wrapped inside, the child elements can now `consume` the context of the data of these components
+
+### how to condume context from child components
+
+explanation of how it works:
+- create a Context Object:
+    - `export const CurrentUserContext = createContext();`
+- wrap any children you want to be effected/using the context inside context object Provider tags
+    - `<CurrentUserContext.Provider value={currentUser}> <Component /> </...`
+- pass in data you want child components to access via the value prop in the wrapping provider tag (see above)
+- access that data in the child component by using the `useContext` method
+    - `const currentUser = useContext(CurrentUserContext);`
+
+> In SignInForm.js, we’ll access the setCurrentUser function to update user data upon successful sign in, so that we can show different icons in the  NavBar depending on the users logged in state.
+
+9. go to `SignInForm`.js
+
+10. inside the function establish a const of `setCurrentUser` that has a value of the `useContext` function, where the value of that is `SetCurrentUserContext` from `App`.js
+```jsx
+...
+// dont forget to make sure you import it!
+import { SetCurrentUserContext } from "../../App";
+
+function SignInForm() {
+    //this const here buddy.
+    const setCurrentUser = useContext(SetCurrentUserContext)
+    
+        const [signInData, setSignInData] = useState({
+          username: '',
+          password1: '',
+        })
+    ...
+```
+> Now that we have access to the setter function, let’s save the data returned from the sign in 
+
+11. in the `SignInForm()`, go to the `try` statement in the `handleSubmit` function.
+    - turn the `await axios.post()` method into a const called `{data}`
+    - beneath it, call the `setCurrentUser` method and pass it `data.user` which will be the userdata returned from the API by axios.
+```jsx
+...
+const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+        // method turned into a variable
+        const {data} = await axios.post('dj-rest-auth/login/', signInData);
+        // then the variable used as the value for the setCurrentUser useContext hook
+        // which is passed back to the App.js
+        setCurrentUser(data.user)
+        history.push('/')
+    } catch(err){
+        console.log(err)
+        setErrors(err.response?.data)
+    }
+}
+...
+```
+
+12. go to `NavBar`.js
+
+13. inside its functional statement create a const called `currentUser` and set its value to the `useContext` method, (being sure to import `useContext` in with `React`). the value of `useContext` should be `CurrentUserContext` from `App.js`, making sure thats imported in too
+```jsx
+...
+import React, { useContext } from 'react'
+import logo from '../assets/logo.png'
+import styles from '../styles/NavBar.module.css'
+import { NavLink } from 'react-router-dom';
+import { CurrentUserContext } from '../App';
+
+const NavBar = () => {
+    const currentUser = useContext(CurrentUserContext)
+    ...
+```
+
+#### jsx fragments
+
+14. underneath that, create a `loggedOutIcons` variable that contains all the JSX for the sign in and sign up buttons
+    > because JSX can return only a single element. the elements need to be ocntained in something, but we don’t want to wrap these NavLinks  in a div, as that will mess with our CSS. 
+    
+    > Instead we can use a JSX fragment, which is an empty element. When this renders in the browser, we’ll just get our navigation links, and no wrapper element will appear in the HTML.
+
+    ```jsx
+        const loggedOutIcons = (
+        <> // This is JSX Fragment syntax
+        <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signin">
+            <i className='fas fa-sign-in-alt'></i>Sign In
+        </NavLink>
+        <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signup">
+            <i className='fas fa-user-plus'></i>Sign up
+        </NavLink>
+        </> // this cheats the JSX to return a single element, 
+            // but will not appear as a single element in the 
+            // rendered HTML
+    )
+    ```
+15. create a `loggedInIcons` const with a fragment value also, execpt for now it will just contain an object of `{currentUser?.username}`
+    ```jsx
+    ...
+    const currentUser = useContext(CurrentUserContext)
+    const loggedInIcons = <>{currentUser?.username}</>
+    const loggedOutIcons = (...
+    ```
+
+16. below the `home` `NavLink` add a ternary statement that checks if the CurrentUser has a value, if it does, `loggedInIcons`, else `loggedOutIcons`
+    ```jsx
+    ... 
+    <NavLink exact className={styles.NavLink} activeClassName={styles.Active} to="/">
+        <i className="fas fa-home"></i>Home
+    </NavLink>
+    // statement below
+    {currentUser ? loggedInIcons : loggedOutIcons}
+    ...
+    ```
+17. run the code and see if you can log in, if you do, you can see that the accoutn name appears in the top right, insted of sign in and sign out
 
