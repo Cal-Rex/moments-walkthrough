@@ -69,6 +69,9 @@
     - how to use the useContext hook
     - [using JSX fragments](#jsx-fragments)
 
+9. [Refactoring to a custom context hook](#refactoring-to-a-custom-context-hook)
+    - CurrentUserContext code into a custom hook and put it into its own folder.
+
 
     
 
@@ -1137,3 +1140,117 @@ const NavBar = () => {
     ```
 17. run the code and see if you can log in, if you do, you can see that the accoutn name appears in the top right, insted of sign in and sign out
 
+_____________________________________________________________________
+
+## Refactoring to a custom context hook
+
+CurrentUserContext code into a custom hook and put it into its own folder:
+
+> When working on larger projects, creating all the context states, providers and logic can get lengthy. So it’s a good practice to separate these  into their own files in a contexts folder.
+
+1. start by creating a `contexts` folder in `src`
+2. create a file called `CurrentUserContext.js`
+3. inside it, export a variable called `CurrentUserProvider` with the value of an arrow function that takes a `{children}` object as an argument
+4. inside the arrow function, cut and paste the `useState` variables, the `handleMount` function and the `useEffect` method from `App.js`
+    - and also the context objects too
+    - also cut and paste the imports for `createContext`, `useEffect`, `useState` and `axios`
+```jsx
+// imports for useEffect, useState, createContext
+import { useEffect, useState, createContext } from 'react';
+// import for axios
+import axios from 'axios';
+
+// context objects
+export const CurrentUserContext = createContext();
+export const SetCurrentUserContext = createContext();
+
+export const CurrentUserProvider = ({children}) => {
+    // useState variables
+    const [currentUser, setCurrentUser] = useState(null)
+
+    // handleMount function
+    const handleMount = async () => {
+        try {
+        const {data} = await axios.get('dj-rest-auth/user/')
+        setCurrentUser(data)
+        } catch (err) {
+        console.log(err)
+        }
+    }
+
+    // useEffect method
+    useEffect(() => {
+        handleMount()
+    }, [])
+}
+```
+
+5. add a return statement, inside it, cut and paste the `<SetCurrentUserContext.Provider>` and `<CurrentUserContext.Provider>` component tags, inside them, put the `{children}` object being exported by `CurrentUserProvider`
+    - make sure that the `CurrentUserProvider` component gets imported from contexts
+```jsx
+return (
+    <CurrentUserContext.Provider value={currentUser}>
+    <SetCurrentUserContext.Provider value={setCurrentUser}>
+        {children}
+    </SetCurrentUserContext.Provider>
+    </CurrentUserContext.Provider>
+)
+```
+
+6. go to `index.js` and wrap the `App` component in the `CurrentUserProvider` component
+    - make sure that it imports!
+```jsx
+// imported
+import { CurrentUserProvider } from './contexts/CurrentUserContext';
+
+ReactDOM.render(
+  <React.StrictMode>
+    <Router>
+    {/* wraps the App!*/} 
+      <CurrentUserProvider>
+        <App />
+      </CurrentUserProvider>
+    </Router>
+  </React.StrictMode>,
+  document.getElementById('root')
+);
+```
+
+> As you probably remember, we’re consuming the context in two places: SignInForm and Navbar. In order to make accessing currentUser and setCurrentUser less cumbersome, by not having to import the useContext alongside Context Objects, we’ll create two custom hooks. 
+
+7. in `CurrentUserContext`.js, create a new set of `useContext` hooks below the `CurrentUserContext` exports and export them too. set their values to the `CurrentUserContext`  variables respectively:
+```jsx
+export const CurrentUserContext = createContext();
+export const SetCurrentUserContext = createContext();
+
+// new set! they take the consts above as their arguments!
+export const useCurrentUser = () => useContext(CurrentUserContext)
+export const useSetCurrentUser = () => useContext(SetCurrentUserContext)
+```
+
+8. in the `SignInForm`.js file, amend the `setCurrentUser` const's value to `useSetCurrentUser()`, this should auto import.
+    - also, remove obsolete imports
+```jsx
+...
+import axios from "axios";
+import { useSetCurrentUser } from "../../contexts/CurrentUserContext";
+
+function SignInForm() {
+    // updated value
+    const setCurrentUser = useSetCurrentUser();
+    ...
+```
+
+9. got to `NavBar`.js repeat the process
+```jsx
+...
+import { useCurrentUser } from '../contexts/CurrentUserContext';
+
+const NavBar = () => {
+    const currentUser = useCurrentUser();
+    const loggedInIcons = <>{currentUser?.username}</>
+    const loggedOutIcons = (
+        ...
+```
+
+10. 
