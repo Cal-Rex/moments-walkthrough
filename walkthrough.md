@@ -39,7 +39,36 @@
 
 5. [Routing in React](#routing-in-react)
     - Video: https://youtu.be/lORLzImNzis
-    - 
+    - using the React Router Library
+    - how to handle routing in React so that different urls will render different pages
+    - using pseudo elements/classes in jsx
+    - Adding a Page not found page
+
+6. [Authentication: Creating the SignUp form part 1](#authentication-creating-the-signup-form---part-1)
+    - Video: https://youtu.be/t2wJpOYdh-s
+    - create a workign signup form
+    - hide elements depending on device size
+    - have a form create a new accoutn on a database
+    - provide feedback to user if there are errors on form
+    - Link up database API with React Project
+
+7. [Authentication: Creating the SignUp form part 2](#authentication-creating-the-signup-form-part-2)
+    - Video: https://youtu.be/2gJBVirR2gc
+    - how to send data to the API
+    - how to write event handlers
+    - display feedback when form encounters an error
+    - handling non-field errors
+    - [CHECK THAT ALL YOUR URLS IN YOUR API MATCH](#check-the-api)
+    - [challenge for creating sign in form/making forms (has good hints)](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+RA101+2021_T3/courseware/70a8c55db0504bbdb5bcc3bfcf580080/b398c39fcbef44ca8b23dbac5e7f6067/) - spans 3 sections (book icons)
+
+8. The useContext Hook
+    - Video: https://youtu.be/TNZNKkVFCWw
+    - display different links/render different content depending on the user's authentication/logged in status
+    - sending request to API to check what user is logged in
+    - Check what icons do display based on the current user
+    - how to use the useContext hook
+
+
     
 
 _________________________
@@ -264,6 +293,8 @@ __________________________________________________
 ## Routing in React
 
 - how to handle routing in React so that different urls will render different pages
+- using pseudo elements/classes in jsx
+- Adding a Page not found page
 
 1. Wrap all your main content in a `Container`
 ```jsx
@@ -314,4 +345,563 @@ function App() {
 ...
 ```
 
-4.
+### Routing in React using React Router library
+
+install it with: 
+modern ver: `npm install react-router-dom`
+ver used in walkthrough: `npm install react-router-dom@5.3.0`
+
+components of the library:
+
+##### Router
+> The BrowserRouter component uses the browser history API to keep our UI in sync with the URL. It holds all the state required, so it has to wrap around all the other react-router library components.
+
+##### Switch
+> Switch holds all the routes and renders the first one that matches the current url.
+
+##### Route
+> A Route renders a given component when its path matches the current URL.
+
+##### Link
+> A Link component is just like our  good old friend the anchor tag, but it’s used with react router to link to a different Route instead.
+```jsx
+// The Router handles all the navigation
+<Router>
+    
+    <div>
+        <nav>
+            <ul>
+                <li>
+                    // component renders a link to the /example-component Route 
+                    <Link to="/example-component">Example Component</Link>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    // The Switch handles all the Routes
+    <Switch>
+        // The Route contains the Component
+        <Route path="/example-component">
+            <ExampleComponent />
+        </Route>
+    </Switch>
+
+</Router>
+```
+
+how it works.
+
+- components are nested in `Route`s which establish what the `path` in the browser url has to be for the component to load
+- the `NavLink` components use a `to` prop to change the browser url to a given value
+- this then makes the desired `Route` load whatever is inside its tags
+
+
+how to use:
+1. import the following into `index`.js
+    `import { BrowserRouter as Router } from 'react-router-dom'`
+
+> As you can see, React references the root div from index.html in the public folder. All of these components will be rendered inside it. In order for our Router to work, we need to wrap the App component inside it.
+
+2. in index.js wrap the `App` component in the `Router` component tags
+```jsx
+import { BrowserRouter as Router } from 'react-router-dom'
+
+ReactDOM.render(
+  <React.StrictMode>
+    <Router>
+      <App />
+    </Router>
+  </React.StrictMode>,
+  document.getElementById('root')
+);
+```
+> Now, in App.js, we’ll import the Switch and Route components so we can set up routing for our React project.
+
+3.  in App.js, make the following import:
+    - `import { Route, Switch } from 'react-router-dom'`
+
+4. add in the code:
+```jsx
+import { Route, Switch } from 'react-router-dom'
+
+function App() {
+  return (
+    <div className={styles.App}>
+      <NavBar />
+      <Container className={styles.Main}>
+        // the switch holds all of the routes
+        <Switch>
+            // when the `path` prop matches the browser url, 
+            // the `render` runs the content in the arrow function
+          <Route exact path="/" render={() => <h1>Home page</h1>} />
+          // The `exact` prop tells the route to only render its component
+          // when the url entered is exactly the same.
+          <Route exact path="/signin" render={() => <h1>Sign in</h1>} />
+        </Switch>
+        
+      </Container>
+    </div>
+  );
+}
+
+export default App;
+```
+
+5. check the routes are working by manually typing in the path onto the browser url
+
+> Our routes are working, so now we need  to wire up our links in the navbar.  
+
+6. in `NavBar`.js, import the following:
+    - `import { NavLink } from 'react-router-dom';`
+
+7. wrap the logo in the `NavBar` app with a `NavLink` that goes `to` an empty path (`"/"`)
+```jsx
+import { NavLink } from 'react-router-dom';
+
+const NavBar = () => {
+    return (
+        <Navbar className={styles.NavBar} expand="md" fixed="top">
+            <Container>
+                // nav link added here
+                <NavLink to="/">
+                    <Navbar.Brand>
+                        <img src={logo} alt="logo" height="45"/>
+                    </Navbar.Brand>
+                </NavLink>
+            ...
+        ...
+    ...
+```
+
+8. repeat this process for the `Home`, `Sign in` and `Sign up` elements
+
+9. check it all works and then amend css styling as appropriate
+
+#### Using Peudo classes in JSX
+
+10. add Css style rules to links, regular classes are given to elements with the `className` prop, but pseudo classes like `active` can be applied like so: `activeClassName`. see code below for example:
+ - note how the `home` link has the `exact` prop. This is because "`/`" is also in all of the other links, so css style rules were getting applied to the button as if it was also active. using `exact` stops this from happening because the url must be `exact` to trigger this.
+
+```jsx
+import { Container, Navbar, Nav } from 'react-bootstrap';
+import React from 'react'
+import logo from '../assets/logo.png'
+import styles from '../styles/NavBar.module.css'
+import { NavLink } from 'react-router-dom';
+
+const NavBar = () => {
+    return (
+        <Navbar className={styles.NavBar} expand="md" fixed="top">
+            <Container>
+                <NavLink to="/">
+                <Navbar.Brand>
+                    <img src={logo} alt="logo" height="45"/>
+                </Navbar.Brand></NavLink>
+
+                <Navbar.Toggle aria-controls="basic-navbar-nav" />
+
+                <Navbar.Collapse id="basic-navbar-nav">
+                    <Nav className="ml-auto">
+                    <NavLink exact className={styles.NavLink} activeClassName={styles.Active} to="/">
+                        <i className="fas fa-home"></i>Home
+                    </NavLink>
+                    <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signin">
+                        <i className='fas fa-sign-in-alt'></i>Sign In
+                    </NavLink>
+                    <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signup">
+                        <i className='fas fa-user-plus'></i>Sign up
+                        </NavLink>
+                    </Nav>
+                </Navbar.Collapse>
+                
+            </Container>
+        </Navbar>
+    )
+}
+
+export default NavBar
+```
+
+#### adding a "page not found" page
+
+add the following code to as the **last** `Route` App.js
+```jsx
+<Route render={() => <p>Page not found!</p>}>
+```
+> We  don’t want to pass in the ‘path’ prop as we need to match any url not defined earlier in any of the previous routes. Now this page not found message will appear for any random url we enter into the browser.
+___________________________________________________
+
+## Authentication: Creating the SignUp form - part 1
+
+- create a workign signup form
+- hide elements depending on device size
+- have a form create a new accoutn on a database
+- provide feedback to user if there are errors on form
+- Link up database API with React Project
+
+### Link up previously created DRF API with React Project
+1. go to heroku
+2. go to the API app
+3. go to its Config vars and add the following:
+    - `CLIENT_ORIGIN` : `https://the-link-to-the-deployed-react-app`
+    - `CLIENT_ORIGIN_DEV` : `https://the-link-to-the-workspace-environment`
+
+> So, we just told our API to accept requests from our React project, now we also need to tell our React project to send requests to the API To achieve this we can use the Axios library that we used in React Essentials.
+
+4. in the terminal, install `npm install axios`
+
+5. create a new folder in `src` called `api`
+    inside that new folder create a file called `axiosDefault.js`
+
+6. in the new file add:
+```jsx
+import axios from "axios";
+
+axios.defaults.baseURL = 'https://django-rest-walkthrough-8fb26a5960d5.herokuapp.com/'
+    // this is  the unique url of your deployed API project.
+    // tells react where to send data to
+
+axios.defaults.headers.post['Content-Type'] = 'multipart/form-data'
+    // establish the type of data being sent. 
+    // multipart/form-data is the data format the API will be expecting. 
+    // We need the multipart because our application will be dealing with images
+    // as well as text in its requests.
+
+axios.defaults.withCredentials = true
+    // To avoid any CORS errors when sending cookies,
+    // we also need to set withCredentials to true.
+```
+
+7. import the new axios commands into `App.js`
+    ```jsx
+    import './api/axiosDefaults'
+    ```
+
+### create a new form
+
+8. add these following css files to the project:
+    - [App.module.css](https://github.com/mr-fibonacci/moments/blob/cf955d2f2e6f70f61c92d1f9de85558d8e49f3a8/src/App.module.css)
+    - [Button.module.css](https://github.com/mr-fibonacci/moments/blob/cf955d2f2e6f70f61c92d1f9de85558d8e49f3a8/src/styles/Button.module.css)
+    - [SignInUpForm.module.css](https://github.com/mr-fibonacci/moments/blob/cf955d2f2e6f70f61c92d1f9de85558d8e49f3a8/src/styles/SignInUpForm.module.css)
+
+9. create a new folder in `src` called `pages`
+
+10. inside the `pages` folder create a folder called `auth`
+
+11. in the `auth` folder create a `SignUpForm.js` file
+
+12. paste in the boilerplate code provided:
+    - [SignUpForm.js](https://github.com/Code-Institute-Solutions/moments-starter-code/blob/master/06-starter-code/SignUpForm.js)
+
+13. add the newly created `SignUpForm` component into the specified `Route` in `App`.js
+```jsx
+<Route exact path="/signup" render={() => <SignUpForm />} />
+``` 
+
+14. grab a form component from React bootstrap and implement it into the `SignUpForm`
+
+15. cut out the bits you dont need, copy the password field and make a second passowrd field. add styling from the imported CSS
+```jsx
+import React from "react";
+import { Link } from "react-router-dom";
+import styles from "../../styles/SignInUpForm.module.css";
+import btnStyles from "../../styles/Button.module.css";
+import appStyles from "../../App.module.css";
+
+import { Form, Button, Image, Col, Row, Container } from "react-bootstrap";
+
+const SignUpForm = () => {
+  return (
+    <Row className={styles.Row}>
+      <Col className="my-auto py-2 p-md-2" md={6}>
+        <Container className={`${appStyles.Content} p-4 `}>
+          <h1 className={styles.Header}>sign up</h1>
+
+            <Form>
+                <Form.Group controlId="username">
+                        {/* In React Bootstrap this control Id prop defines
+                        the related id and for attributes on the input and 
+                        label elements */}
+                    <Form.Label className="d-none">Username</Form.Label>
+                        {/* to make form accessible to screen readers but
+                        not harm site aesthetics, set the class to "d-none"
+                        so that it doesn't display */}
+                    <Form.Control className={styles.Input} type="text" placeholder="Username" name="username" />
+                </Form.Group>
+
+                <Form.Group controlId="password1">
+                    <Form.Label className="d-none">Password</Form.Label>
+                    <Form.Control className={styles.Input} type="password" placeholder="Password" name="password1"/>
+                </Form.Group>
+
+                <Form.Group controlId="password2">
+                    <Form.Label className="d-none">Confirm Password</Form.Label>
+                    <Form.Control className={styles.Input} type="password" placeholder="Confirm Password" name="password2"/>
+                </Form.Group>
+
+                <Button
+                    // using template Literals here 
+                    // to apply multiple class values to the className prop
+                    className={`${btnStyles.Button} ${btnStyles.Wide} ${btnStyles.Bright}`}
+                    type="submit"
+                >
+                Sign Up
+                </Button>
+            </Form>
+
+        </Container>
+        <Container className={`mt-3 ${appStyles.Content}`}>
+          <Link className={styles.Link} to="/signin">
+            Already have an account? <span>Sign in</span>
+          </Link>
+        </Container>
+      </Col>
+      <Col
+        md={6}
+        className={`my-auto d-none d-md-block p-2 ${styles.SignUpCol}`}
+      >
+        <Image
+          className={`${appStyles.FillerImage}`}
+          src={
+            "https://codeinstitute.s3.amazonaws.com/AdvancedReact/hero2.jpg"
+          }
+        />
+      </Col>
+    </Row>
+  );
+};
+
+export default SignUpForm;
+```
+
+_______________________________________________________________________________
+
+## Authentication: Creating the SignUp form part 2
+
+- how to send data to the API
+- how to write event handlers
+- display feedback when form encounters an error (catching form errors)
+- storing form values with a useState hook
+
+
+### storing form values with a useState hook
+
+1. in SignUpForm import the `useState` hook
+    -   ```jsx
+        import React, {useState} from "react";
+        ```
+2. set a hook up for `signUpData`:
+    ```jsx
+    ...
+
+    const SignUpForm = () => {
+        // heres the hook created using the useState Hook
+        // its taking all the values of the form as props
+        // within the signUpData state
+        const [signUpData, setSignUpData] = useState({
+            username: '',
+            password1: '',
+            password2: '',
+        })
+
+    const { username, password1, password2 } = signUpData
+        // bit of packing the separate form values into the prop
+
+    return (
+        ...
+
+        <Form>
+                <Form.Group controlId="username">
+                    <Form.Label className="d-none">Username</Form.Label>
+                    <Form.Control 
+                        className={styles.Input} 
+                        type="text"
+                        placeholder="Username"
+                        name="username" 
+                        value={username}
+                            // see the value above here,
+                            //thats the value being sent to the 
+                            // signUpData const
+                        />
+                </Form.Group>
+
+                ...
+    ```
+
+### how to write event handlers
+
+> We can't type anything in these fields until we write the onChange Handler. So Now, we need to write the universal onChange handler for when we try to type something into an input field so that it works.
+
+3. above the return write a handleChange function:
+```jsx
+...
+const handleChange = (event) => {
+setSignUpData({
+    ...signUpData,
+    // use the ...spread operator to spread the form data into the state
+    [event.target.name]: event.target.value,
+    // this code targets the named item in the event that matches a prop, and updates it with its value
+    // think of it as targeting the value in a list with the name of the element's name
+})
+}
+
+return (
+...
+```
+
+4. add the `onChange` attribute to the form items:
+```jsx
+  const handleChange = (event) => {
+    setSignUpData({
+        ...signUpData,
+        [event.target.name]: event.target.value,
+    })
+  }
+
+  return (
+    ...
+            <Form>
+                <Form.Group controlId="username">
+                    <Form.Label className="d-none">Username</Form.Label>
+                    <Form.Control 
+                        className={styles.Input} 
+                        type="text"
+                        placeholder="Username"
+                        name="username" 
+                        value={username} // this is the attribute the event targets
+                        onChange={handleChange} // this is the event handler that triggers
+                        />
+                </Form.Group>
+```
+
+### how to send data to the api
+
+5. create an `async` `handleSubmit` function that 
+    - prevents the default process of submitting a form
+    - has a `try` statement that `await`s `axios` `post`ing the `signUpData` state values to `"/dj-rest-auth/registration/"`
+    - that uses the react `history` function to `push` users to the `"/signin"` path 
+    - that is set up to catch errors(that's coming up after this)
+    ```jsx
+    // It's an async function, so it works in the background, hense the use of the 
+    // "await keyword"
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+            // Prevents the default form submission
+        try {
+            await axios.post('dj-rest-auth/registration/', signupData)
+                // runs an asyncfunction waiting for the data to successfully post to the API
+            history.push('/signin')
+                // redirects the user to signin upon success
+        } catch(err){
+
+        }
+    }
+    ```
+
+### catching form errors
+
+6. set up a hook to catch the errors:
+    ```jsx
+    ...
+    const SignUpForm = () => {
+    const [signUpData, setSignUpData] = useState({
+        username: '',
+        password1: '',
+        password2: '',
+    })
+    const { username, password1, password2 } = signUpData
+
+    // here
+    const [errors, setErrors] = useState({});
+    ...
+    ```
+
+7. inside the `catch` block of the `try` statement in `handleSubmit`:
+    - use `setErrors` to catch `err.response` using optional chaining (`?`)
+    ```jsx
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        try {
+            await axios.post('dj-rest-auth/registration/', signupData)
+            history.push('/signin')
+        } catch(err){
+            // "?" optional chaining used on the response:
+            // What it does is check if response is defined before
+            // looking for the data.  So if response isn’t defined,
+            // it won’t throw an error.
+            setErrors(err.response?.data)
+        }
+    }
+    ```
+
+> now that the errors are being stored in the state they can be displayed to the user when something goes wrong
+
+8. under each `FormGroup` component, call the `errors` object on using the value name of the form element above it using optional chaining (`?`), and run a `map` method on it
+    - pass it the arguments of `message` and `idx`
+    - inside the `map` method, create an `Alert` component (needs to be imported, but will probably be auto imported when called from dropdown/autocomplete)
+    - inside the `Alert` component, pass the props `variant`=`warning` and `key`=`{idx}`
+    - inside the `Alert` tags, add the `{message}` component
+```jsx
+<Form onSubmit={handleSubmit}>
+                <Form.Group controlId="username">
+                    <Form.Label className="d-none">Username</Form.Label>
+                    <Form.Control 
+                        className={styles.Input} 
+                        type="text"
+                        placeholder="Username"
+                        name="username" 
+                        value={username}
+                        onChange={handleChange}
+                        />
+                </Form.Group>
+                {/* see the error code below here*/}
+                {errors.username?.map((message, idx) => 
+                    <Alert variant="warning" key={idx}>{message}</Alert>
+                )}
+
+```
+
+### handling non field errors
+
+> The last piece of feedback we have to add is  for the so-called non-field-errors, such as when the passwords don’t match. 
+
+9. under the `submit``button` add an Alert, but this time instead of handling a field dot notated by errors, it should handle `non_field_errors`
+```jsx
+    ...
+    <Button
+        className={`${btnStyles.Button} ${btnStyles.Wide} ${btnStyles.Bright}`}
+        type="submit"
+        >
+        Sign Up
+        </Button>
+        // error handling here, right below the button
+        {errors.non_field_errors?.map((message, idx) => (
+        <Alert key={idx} variant="warning" className="mt-3">
+            {message}
+        </Alert>
+        ))}
+</Form>
+...
+```
+
+10. check it doesnt work, then check it does all work by creating a new account
+
+### Check the API
+
+when i did this in the tutorial i couldnt get the form to submit or throw errors because i had incorrectly set up the urls in the API
+
+make sure to have Auth registration. refer to the drf_api urls in the Dajango rest walkthrough repo
+
+
+_______________________________________________________________________________________
+
+### The useContext Hook
+
+- Video: https://youtu.be/TNZNKkVFCWw
+- display different links/render different content depending on the user's authentication/logged in status
+- sending request to API to check what user is logged in
+- Check what icons do display based on the current user
+- how to use the useContext hook
+
+

@@ -3,14 +3,22 @@ import styles from './App.module.css'
 // and the css classes and id's can be accessed using dot notation
 import NavBar from './components/NavBar';
 import { Container } from 'react-bootstrap';
+import { Route, Switch } from 'react-router-dom'
+import './api/axiosDefaults'
+import SignUpForm from './pages/auth/SignUpForm';
+import SignInForm from './pages/auth/SignInForm';
 
 function App() {
   return (
     <div className={styles.App}>
       <NavBar />
       <Container className={styles.Main}>
-        <h1>Home page</h1>
-        <h1>Sign in</h1>
+        <Switch>
+          <Route exact path="/" render={() => <h1>Home page</h1>} />
+          <Route exact path="/signin" render={() => <h1><SignInForm /></h1>} />
+          <Route exact path="/signup" render={() => <SignUpForm />} />
+        </Switch>
+        
       </Container>
     </div>
   );
