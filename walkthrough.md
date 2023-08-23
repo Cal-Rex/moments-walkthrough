@@ -116,6 +116,16 @@
 14. [Setting up the Post Page](#setting-up-the-post-page)
     - Video: https://youtu.be/Hya3y7zjlVw
     - [PostPage starter code](https://github.com/Code-Institute-Solutions/moments-starter-code/tree/master/14a-starter-code)
+    - request a post from the API
+    - logging requested API data to the console
+    - displaying post data on a page
+    - getting an id of a db record from the url
+    - fetching a post from the database
+
+15. [Creating the Post Component frontend](#creating-the-post-component-frontend)
+    - Video: https://youtu.be/SQdcuFRbUtU
+    - take the data fetched from the last section and display it on a page
+    
     
 
 _________________________
@@ -2380,4 +2390,341 @@ _________________________________________________________________________
 ## Setting up the Post page
 
 - [PostPage starter code](https://github.com/Code-Institute-Solutions/moments-starter-code/tree/master/14a-starter-code)
-- 
+- request a post from the API
+- logging requested API data to the console
+- displaying post data on a page
+- getting an id of a db record from the url
+- fetching a post from the database
+
+
+1. in the `posts` folder, create a new file called `PostPage.js`
+    - paste in the provided code above
+2. create a `Route` for the new page in `App`.js
+```jsx
+<Route exact path="/posts/:id" render={() => <PostPage />} />
+```
+> The colon means that id is a parameter that can be passed through the url. In this case, it will be the id of our post. So any time we set a link to /post/ and then add a post id React will know to render the Post page for the specified post.
+
+3. go back to `PostPage.js`
+
+### getting an id of a db record from the url
+
+4. import `{ useParams }` hook from `"react-router";`
+
+5. inside the `PostPage` function, destructure the `useParams` hook into const object with the name of the parameter in the desired route, which in this case is `id`
+```jsx
+import { useParams } from "react-router";
+
+function PostPage() {
+    // id syntax taken from the /posts/ Route in App.js
+    const { id } = useParams();
+    ...
+```
+
+6. Create a `useState()` for `post`:
+```jsx
+...
+function PostPage() {
+    const { id } = useParams();
+    // When we reach out to the API for a single post we’ll get a single object returned.  
+    // However, if we ask for multiple posts, we’ll get an array of objects. 
+    // So, to make all the future logic compatible with arrays of posts, we’ll set the initial value to an  
+    // object that contains an empty array of results. That way, we can always operate on the results  
+    // array, regardless of whether we get a single post object or an array of posts from the API.
+    const [post, setPost] = useState({ results: [] });
+    ...
+```
+
+7. import the `useEffect` hook and call it in the `PostPage` function. this will be used to create a component mounting function that will make a request to the API:
+```jsx
+const { id } = useParams();
+    const [post, setPost] = useState({ results: [] });
+
+    useEffect(() => {
+        const handleMount = async () => {
+            try {
+                // What Promise.all does is it accepts an array of promises and gets resolved when all the promises  
+                // get resolved, returning an array of data. If any of the promises in the array fail,  
+                // Promise.all gets rejected with an error.
+                const [{data: post}] = await Promise.all([
+// Here we are  ^^^^^^^^^^^^^^^^^^^^ destructing the data property returned from the API and renaming it to post
+                    axiosReq.get(`/posts/${id}`)
+                ])
+                // then, update the post state by giving the state object's results key a value of post
+                setPost({results: [post]})
+                // for now, check the api data is being retrieved by logging it to the console
+                console.log(post)
+            } catch(err) {
+                console.log(err)
+            }
+        }
+        // now that it's defined, run the handleMount function
+        handleMount()
+        // the useEffect hook will take a dependency of id, so every time the id updates, 
+        // the useEffect hook will run the HandleMount function
+        // thereby retrieving a new post associated with the updated id
+    }, [id])
+```
+
+8. check it works.
+
+_____________________________________________________________________________________________
+
+## Creating the Post Component frontend
+
+- take the data fetched from the last section and display it on a page
+- [change behaviour/permissions on post depending on whether the owner is viewing it](#change-behaviourpermissions-on-post-depending-on-whether-the-owner-is-viewing-it)
+- make a component that displays:
+    - the post, its title and text content
+    - the post owner's avatar and name
+    - how many users have liked a post
+    - how many comments a post has
+    - the date it was posted
+- it will also let a user:
+    - like and unlike a post
+
+1. create a `Post.module.css` file in the `styles` folder and import the following styles:
+    - [template](https://github.com/Code-Institute-Solutions/moments/blob/1c9abf9c471a0dccdbd4115a5e4ae217742ab10b/src/styles/Post.module.css)
+
+2. create a new file in `pages/posts` called `Post.js`
+    - create the template using an `rafce` snippet
+    - pass in a `props` value to the `Post` function
+    - import the css style rules
+```jsx
+import React from 'react'
+import styles from "../../styles/Post.module.css"
+
+const Post = (props) => {
+  return (
+    <div>Post</div>
+  )
+}
+
+export default Post
+```
+
+3. in the `PostPage` component, remove the "post component" placeholder text and pass in the new `Post` component
+```jsx
+return (
+    <Row className="h-100">
+      <Col className="py-2 p-0 p-lg-2" lg={8}>
+        <p>Popular profiles for mobile</p>
+        <Post /> {/*  <--- there it is*/}
+        <Container className={appStyles.Content}>
+          Comments
+          ...
+```
+
+4. inside the `Post` component in `PostPage`, use a `spread...` operator to pass in the all values in the array of the `results` KVP in `post` as props
+    - also, pass in the `setPost` function as a `setPosts` prop to be used later to handle likes
+```jsx
+...
+<Col className="py-2 p-0 p-lg-2" lg={8}>
+        <p>Popular profiles for mobile</p>
+        {/* spreading the post state's results kvp object, taking its first array value*/}
+        <Post {...post.results[0]} setPosts={setPost} />
+        {/* which has been given all the post data from the API*/}
+...
+```
+
+5. now that the data is being passed into the `Post` component, go to `Post.js` to handle it.
+    - first, deconstruct the passed in `props` into their individual objects:
+    - you can get all the values of the returned API object from te console log printing from `PostPage`, list the objects in the deconstructing operator using that
+```jsx
+...
+const Post = (props) => {
+  const {
+    id, owner, profile_id, profile_image, comments_count,
+    likes_count, like_id, title, content, image, updated_at,
+  } = props
+  ...
+```
+
+6. next define a `currentUser` variable beneath that with the value of the `useCurrentUser` hook imported from the `currentUserContexts` file
+7. then, with that new variable, write a const beneath it that uses it to check if the current user's username matches that of the post's `owner` prop.
+```jsx
+...
+const currentUser = useCurrentUser();
+const is_owner = currentUser?.username === owner
+...
+```
+
+8. now, style the returning statement by deleting the placeholder div and replacing it with the new data and bootstrap:
+```jsx
+// auto import the Card component from "react-bootstrap"
+// give it a class predefined in the imported css
+return <Card className={styles.Post}>
+        {/* inside the card, create a Card.Body component*/}
+        <Card.Body>
+        {/* use this to then contain a Media component, imported from "react-bootstrap" */}
+            {/* manually assign it bootstrap utility classes to style the content*/}
+                            {/* you can use the preview window for this */}
+            <Media className="align-items-center justify-content-between">
+            {/* create a Link that goes to the Post owner's Profile */}
+            {/* Link is imported from "react-router-dom" */}
+            {/* the page hasn't been created yet, but this link will work when it has been */}
+                <Link to={`/profiles/${profile_id}`}>
+                {/* import the Avatar component and pass it the profile image prop as the src*/}
+                {/* make it a little larger by overriding the default height prop*/}
+                <Avatar src={profile_image} height={55} />
+                {/* place the post owner's username right beside it*/}
+                {owner}
+                </Link>
+                {/* this div houses the updated_at date provided by the API*/}
+                {/* mind, the date format has handled in the API*/}
+                <div className='d-flex align-items-center'>
+                    <span>{updated_at}</span>
+                </div>
+            </Media>
+        </Card.Body>
+    </Card>
+```
+### change behaviour/permissions on post depending on whether the owner is viewing it
+
+9. go back to the `PostPage` component. where the `Post` component is being called in the `return` statement, pass it another prop called `postPage`
+    - > Notice that we don’t need to give our postPage prop a value here, simply applying it means it will be returned as true inside our Post component.
+```jsx
+<Post {...post.results[0]} setPosts={setPost} postPage />
+```
+
+10. with that being passed in, go to `Post.js` and add it to the destructuring operator so that it can be used in the component
+```jsx
+const Post = (props) => {
+  const {
+    id, owner, profile_id, profile_image,
+    comments_count, likes_count, like_id,
+    title, content, image, updated_at,
+    postPage, // <----- new Prop!
+  } = props
+```
+
+11. with the new `postPage` prop and the previously established `is_owner` variable, write a conditional statement with double ampersands that `if is_owner is true and postPage is true` do something. In this case, just test it works by return a placeholder string:
+```jsx
+...
+<Avatar src={profile_image} height={55} />
+{owner}
+</Link>
+<div className='d-flex align-items-center'>
+    <span>{updated_at}</span>
+    {/* if is_owner is true and postPage is true */}
+    {is_owner && postPage && "hello world"}
+                        {/* render "hello world" */}
+</div>
+```
+
+12. test it works
+
+13. now, beneath the `Card.Body` add a new `Card.Img` component that takes the `image` prop as the `src` value, and the `title` prop as the `alt` value. then, wrap it in a link that points `to` the post by its `id`
+```jsx
+...
+    </Media>
+</Card.Body>
+<Link to={`/posts/${id}`}>
+    <Card.Img src={image} alt={title} />
+</Link>
+...
+```
+
+14. beneath that, create another `Card.Body` component and pass in the following conditional statements:
+```jsx
+<Link to={`/posts/${id}`}>
+<Card.Img src={image} alt={title} />
+</Link>
+<Card.Body>
+{/* if a title value exists, display it in a Card.Title Component*/}
+    {title && <Card.Title className='text-center'>{title}</Card.Title>}
+{/* if a content value exists, display it in a Card.Text Component*/}
+    {content && <Card.Text>{content}</Card.Text>}
+</Card.Body>
+```
+
+15. now, below that card body, create a div and assign it the class of `styles.PostBar`. this div will be used to handle likes and comments icons
+
+16. inside the div, add a ternary conditional statement that check is the `is_ower` variable is true. if it is, a tooltip will display saying that they can't like their own posts
+```jsx
+</Card.Body>
+    <div className='{styles.PostBar}'>
+        {is_owner ? (
+            {/* OverlayTrigger creates overlays, it's imported from "react-bootstrap" */}
+                {/* the placement prop set to top makes it appear above the icon */}
+    {/* inside the displaying overlay, the text is styled with the Tooltip component, imported from "react-bootstrap"*/}
+            <OverlayTrigger placement='top' overlay={<Tooltip>You can't like your own post, Narcissus.</Tooltip>}>
+                <i className='far fa-heart'/>
+            </OverlayTrigger>
+        ) : ()}
+    </div>
+```
+> Just to let you know, our preview will have an error until we’ve finished our ternary, so don’t worry about it.
+
+17. now, in the second part of the ternary, (should the first condition return false), the like_id will be checked to see if it has a value
+    > If it does, that means our user has already liked the post.
+    - add the following code as placeholde for now:
+```jsx
+{is_owner ? (
+    <OverlayTrigger placement='top' overlay={<Tooltip>You can't like your own post, Narcissus.</Tooltip>}>
+        <i className='far fa-heart'/>
+    </OverlayTrigger>
+) : like_id ? (
+    <span onClick={() => {}}>
+        <i className={`fas fa-heart ${styles.Heart}`}/> 
+    </span>
+)}
+```
+
+18. > In the next part of our ternary, we want to check if the user is logged in, and if they are we’ll give them the ability to like the post. So, if there’s no like_id, we’ll check if currentUser is defined. If yes, we’ll make it so that they can like it.
+    - do this by checking if `currentUser` has a value
+```jsx
+{is_owner ? (
+    <OverlayTrigger placement='top' overlay={<Tooltip>You can't like your own post, Narcissus.</Tooltip>}>
+        <i className='far fa-heart'/>
+    </OverlayTrigger>
+) : like_id ? (
+    <span onClick={() => {}}>
+        <i className={`fas fa-heart ${styles.Heart}`}/> 
+    </span>
+) : currentUser ? (
+    <span onClick={() => {}}>
+        <i className={`far fa-heart ${styles.HeartOutline}`}/> 
+    </span>
+) : ()}
+```
+
+19. lastly, add the final statement that renders an `OverlayTrigger` component that displays a tooltip talling users to log in to like posts
+```jsx
+{is_owner ? (
+    <OverlayTrigger placement='top' overlay={<Tooltip>You can't like your own post, Narcissus.</Tooltip>}>
+        <i className='far fa-heart'/>
+    </OverlayTrigger>
+) : like_id ? (
+    <span onClick={() => {}}>
+        <i className={`fas fa-heart ${styles.Heart}`}/> 
+    </span>
+) : currentUser ? (
+    <span onClick={() => {}}>
+        <i className={`far fa-heart ${styles.HeartOutline}`}/> 
+    </span>
+) : (
+    <OverlayTrigger placement='top' overlay={<Tooltip>Log in to like posts!</Tooltip>}>
+        <i className='far fa-heart' />
+    </OverlayTrigger>
+)}
+```
+
+20. underneath this ternary, still inside the div, ass the `likes_count` prop to display the number of likes
+```jsx
+</div>
+{likes_count}
+```
+
+21. next to this, the comments icon and count need to be displayed. beneath the `likes_count`, add a `Link` component that points to the posts `id`, inside it, add the comments icon from fontawesome.
+    - beneath the `Link`, add the `comments_count`
+```jsx
+{likes_count}
+<Link to={`/posts/${id}`}>
+    <i className='far fa-comments' />
+</Link>
+{comments_count}
+```
+
+22. check it works.
+
