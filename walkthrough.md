@@ -72,6 +72,18 @@
 9. [Refactoring to a custom context hook](#refactoring-to-a-custom-context-hook)
     - CurrentUserContext code into a custom hook and put it into its own folder.
 
+10. [Authentication: access and refresh tokens](#authentication-access-and-refresh-tokens)
+    - Video: https://youtu.be/B84S7MplrMY
+    - refreshing our access tokens.
+        - using interceptors to refresh access tokens
+        - and handle errors before they occur
+    - Create axios interceptors for response and request interceptors
+    - configure response interceptor to listen for 401 errors in the responses from the API, 
+        - make it attempt to refresh the access token when needed and respond accordingly.
+    - wire up axiosRes instance in handleMount function to use response interceptor.
+    - configured the request interceptor to always refresh the access token before proceeding with the actual request.
+
+11. 
 
     
 
@@ -1253,4 +1265,435 @@ const NavBar = () => {
         ...
 ```
 
-10. 
+_________________________________________________________________
+
+## Authentication: access and refresh tokens
+
+- refreshing our access tokens.
+    - using interceptors to handle errors before they occur
+- Create axios interceptors for response and request interceptors
+- configure response interceptor to listen for 401 errors in the responses from the API, 
+    - make it attempt to refresh the access token when needed and respond accordingly.
+- wire up axiosRes instance in handleMount function to use response interceptor.
+- configured the request interceptor to always refresh the access token before proceeding with the actual request.
+
+> At this point in our project, if you were to sign in, wait a few minutes and then refresh the page, you would notice the sign in and sign up icons appear back in our NavBar, reflecting that you are no longer logged in. The  reason for this is that the API uses access tokens to determine if a user is logged in or not. These go stale after 5 minutes and need to be refreshed. Our users would find it super annoying to  have to log in every 5 minutes to our app, so we’ll need to write the code to  keep our users logged in for longer.
+
+basically when these tokens expire, when a user tries to acces content on the page, they will get a 401 error. to stop this from happening and keep the users logged in, `interceptors` need to be used
+
+interceptors handle requests and responses to the site before they can throw an error like a 401 forbidden.
+
+1. go to `axiosDefaults.js` in the `api` folder
+2. export 2 new `axios` instances that will have the interceptors attached to them:
+```jsx
+// this one intercepts requests
+export const axiosReq = axios.create();
+// this one intercepts responses
+export const axiosRes = axios.create();
+```
+
+3. go to `CurrentUserContext`.js
+
+> We’re going to use and import the `useMemo` hook, which is part of the React library. `useMemo` is usually used to cache complex values that take time to compute. The reason we’re using it here is that `useMemo` runs before the children components are mounted. And we want to attach the interceptors before the children mount, as that’s where we’ll be using  them and making the requests from.
+
+4. below/after the useEffect method, declare a `useMemo` method housing an arrow function
+
+> The reason we’re using it here is that useMemo  runs before the children components are mounted.  
+And we want to attach the interceptors  before the children mount,  
+
+5.  inside the arrow function, create the axios response interceptor. do this by calling `axiosRes.interceptors.response` (which should auto import) that is appended with the `.use()`
+```jsx
+...
+    useEffect(() => {
+        handleMount()
+    }, [])
+
+    // useMemo function
+    useMemo(() => {
+        axiosRes.interceptors.response.use(
+            
+        )
+    })
+
+    return (
+        ...
+```
+
+6. inside `.use()` write another arrow function that uses response as an argumnt and houses 2 functions:
+    - the 1st is the `response` being returned on its own
+    ```jsx
+        useMemo(() => {
+        axiosRes.interceptors.response.use(
+            (response) => response, 
+
+        )
+    })
+    ```
+    - the second function is an `async` function takes any `err`s and runs a conditional statement on them:
+        - for this to work, `useHistory` needs to be imported too
+        ```jsx
+        ...
+        const history = useHistory()
+        ...
+
+        useMemo(() => {
+            axiosRes.interceptors.response.use(
+                // if theres no error, the response is returned unimpeded
+                (response) => response, 
+                // if there is an error, this async function runs
+                async (err) => {
+                    // checks if the response from the API is a 401
+                    if (err.response?.status === 401){
+                        try{
+                            // if it is, it will try to refresh the token
+                            // from the database
+                            await axios.post('/dj-rest-auth/token/refresh/')
+                        } catch(err){
+                            // if it cant, it will push users that were 
+                            // previously logged in back to
+                            // the sign in page
+                            prevCurrentUser(prevCurrentUser => {
+                                if (prevCurrentUser){
+                                    history.push('/signin')
+                                }
+                                // then it will set the login status to null
+                                return null
+                            })
+                        }
+                        // If there’s no error refreshing the token,  
+                        // return an axios instance with the error config
+                        // to exit the interceptor.
+                        return axios(err.config)
+                    }
+                    // if the error isnt a 401, the promise sent from the React App
+                    // to the database is rejected
+                    return Promise.reject(err)
+                }
+            )
+        })
+        ...
+        ```
+
+7. once this function is set up, update the `await axios.get` function in `handleMount` in the file to `await axiosRes.get` to make use of the new function. if this isn't made already, youll need to create it:
+```jsx
+const handleMount = async () => {
+        try {
+        const {data} = await axiosRes.get('dj-rest-auth/user/')
+        setCurrentUser(data)
+        } catch (err) {
+        console.log(err)
+        }
+    }
+```
+
+
+8. now back in the `useMemo` function, the same needs to be done for `axiosReq`...
+    ```jsx
+    ...
+    useMemo(() => {
+        // tries to refresh tokens before requests are sent out
+        axiosReq.interceptors.request.use(
+            async (config) => {
+                // initially tries to refesh the token via the API
+                try {
+                    await axios.post('/dj-rest-auth/token/refresh/')
+                } catch(err){
+                    // in case that feels and the user was previously
+                    // logged in, pushes them back to the sign in page
+                    setCurrentUser((prevCurrentUser) => {
+                        if (prevCurrentUser) {
+                            history.push('/signin')
+                        }
+                        // set the current user value to null
+                        // as the user is now unauthenticated
+                        return null
+                    })
+                    // return config inside and outside the catch block
+                    // so it returns no matter the outcome
+                    return config
+                }
+                return config
+            },
+            // in the event of an err, reject the promise
+            (err) => {
+                return Promise.reject(err);
+            }
+        );
+
+        axiosRes.interceptors.response.use(
+            ...
+    ```
+
+> Now that we have both interceptors in  place, we shouldn’t forget to add a dependency array for our useMemo hook with history  inside. We want useMemo to only run once, but the linter will throw a warning if we provided an empty dependency array.
+
+9. add the `[history]` dependency as a second parameter to the useMemo function:
+
+```jsx
+... // all the way to the bottom buddy .
+useMemo(() => {
+        axiosReq.interceptors.request.use(
+            async (config) => {
+                try {
+                    await axios.post('/dj-rest-auth/token/refresh/')
+                } catch(err){
+                    setCurrentUser((prevCurrentUser) => {
+                        if (prevCurrentUser) {
+                            history.push('/signin')
+                        }
+                        return null
+                    })
+                    return config
+                }
+                return config
+            },
+            (err) => {
+                return Promise.reject(err);
+            }
+        );
+
+        axiosRes.interceptors.response.use(
+            (response) => response, 
+            async (err) => {
+                if (err.response?.status === 401){
+                    try{
+                        await axios.post('/dj-rest-auth/token/refresh/')
+                    } catch(err){
+                        setCurrentUser(prevCurrentUser => {
+                            if (prevCurrentUser){
+                                history.push('/signin')
+                            }
+                            return null
+                        })
+                    }
+                    return axios(err.config)
+                }
+                return Promise.reject(err)
+            }
+        )
+    }, [history]);
+    // added ^ here 
+```
+______________________________________________________
+
+## Navigation: Adjusting NavBar for loggedIn/loggedOut
+    - adding more icons for logged in users
+    - add log out functionality 
+    - making the add post icon
+    - Creating an avatar component
+
+
+### Making the Add post icon
+
+go to `NavBar.js`:
+1. create new variable and call it `addPostIcon`
+2. copy paste the code for the sign in nav link into it
+3. change its `to` prop from `/signin` to `/posts/create`
+4. update the fontawesome icon to `far fa-plus-square`
+5. change the text from `sign in` to `add post`
+    ```jsx
+    ...
+    const NavBar = () => {
+    const currentUser = useCurrentUser();
+
+    const addPostIcon = (
+        <NavLink
+            className={styles.NavLink}
+            activeClassName={styles.Active}
+            to="/posts/create">
+                <i className='far fa-plus-square'></i>Add post
+        </NavLink>
+    )
+
+    const loggedInIcons = <>{currentUser?.username}</>
+    ...
+    ```
+
+6. inside the return statement, after the Navbar logo, add a jsx object of `{currentUser && addPostIcon}`
+    > This way, it will only show the addPostIcon if the currentUser exists.
+    ```jsx
+    ...
+    return (
+        <Navbar className={styles.NavBar} expand="md" fixed="top">
+            <Container>
+                // Navbar logo
+                <NavLink to="/">
+                <Navbar.Brand>
+                    <img src={logo} alt="logo" height="45"/>
+                </Navbar.Brand></NavLink>
+                
+                // add post object conditional using 
+                // double ampersand
+                {currentUser && addPostIcon}
+                
+                <Navbar.Toggle aria-controls="basic-navbar-nav" />
+                ...
+    ```
+
+> Ok, great! Now, let’s replace our placeholder text in the loggedInIcons variable and add some icons.
+
+### adding more icons for logged in users
+
+7. inside the `loggedInIcons`' JSX fragment, remove the code that displays the name of the logged in user.
+8. copy/paste the sign in nav link again, change its `to` to `/feed`, change its text to "Feed" and update it's icon to `fas fa-stream`
+9. repeat this process for
+    - liked:
+        - `to`: /liked
+        - text: Liked
+        - icon: `fas fa-heart`
+    - sign out
+        - remove the activeClassName prop
+        - `to`: /
+        - text: Sign Out
+        - icon: `fas fa-sign-out-alt`
+        - [steps to take to create logout functionality](#creating-the-logout-function)
+    - profile image
+        - remove the icon
+        - remove text
+        - remove activeClassName prop
+        - `to`: {`/profiles/${currentUser?.profile_id}`}
+            - (this is a template literal, copy exactly as is)
+        - inside the NavLink tags, add an `img` tag with `src`:
+            - `{currentUser?.profile_image}`           
+
+    ```jsx
+        const loggedInIcons = (
+            <>
+            // liked
+            <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/liked">
+                <i className='fas fa-heart'></i>Liked
+            </NavLink>
+
+            // sign out
+            <NavLink className={styles.NavLink} to="/" > 
+                <i className='fas fa-sign-out-alt'></i>Sign Out
+            </NavLink>
+
+            // profile image
+            <NavLink className={styles.NavLink} to={`/profiles/${currentUser?.profile_id}`}>
+                <img src={currentUser?.profile_image} alt="User Profile"/>
+            </NavLink>
+
+            </>
+        )
+    ```
+
+> As we can see, all is well apart from the image that messes up the layout. To remedy this, we’ll quickly create  a utility component called Avatar
+
+### Creating an avatar component
+
+10. in the `styles` folder, create a new css file called `Avatar.module.css`
+    - copy/past in the provided css:
+        ```css
+        .Avatar {
+            border-radius: 50%;
+            margin: 0px 8px 0px 8px;
+            object-fit: cover;
+        }
+        ```
+        > The object-fit: cover line is especially important, as it will always make sure the profile image fits its container. What that means is that we’ll always see a nice, round picture no matter what the image dimensions are.
+
+11. create a new component called `Avatar.js` in the `components` folder
+    - inside it, use the `rafce` snippet
+    - import the styles from the Avatar.module.css
+    - pass it `props`
+    - create a const that establishes the objects inside the `props`
+        > it will always receive a src prop and may  also receive props for height and text. So let's descructure that inside.
+        - src
+        - height = 45
+            - setting a default value here will set the standard size of the avatar
+        - text
+    - then, replace the div in the return statement with a `<span>`
+    - inside that, insert an `img` tag with the className `{styles.Avatar}` and add the following attributes:
+        - `src` of `{src}`, pulling the value from the prop
+        - `height` = `{height}`
+        - `width` = also `{height}` as combining the forced dimensions and `object-fit` in the css, this will proportion the image perfectly
+        - `alt` = "avatar"
+    - underneath the `img`, still inside the span tags, pass in the `{text}` prop
+    ```jsx
+    import React from 'react'
+    import styles from "../styles/Avatar.module.css";
+
+    const Avatar = (props) => {
+        const {src, height = 45, text} = props;
+
+    return (
+        <span>
+            <img
+                className={styles.Avatar}
+                src={src}
+                height={height}
+                width={height}
+                alt="Avatar"
+            />
+            {text}
+        </span>
+    )
+    }
+
+    export default Avatar;
+    ```
+
+12. back in `NavBar.js`, remove the `img` inside the profile image nav link beneath the `Sign out` nav link
+13. replace it with the new `Avatar` component
+    - pass in `{currentUser?.profile_image}` as the `src` prop
+    - pass in `"Profile"` as the `text` prop
+    - pass in `{40}` as the `height` prop to override the default value
+```jsx
+...
+<NavLink className={styles.NavLink} to="/">
+    <i className='fas fa-sign-out-alt'></i>Sign Out
+</NavLink>
+
+<NavLink className={styles.NavLink} to={`/profiles/${currentUser?.profile_id}`}>
+    <Avatar src={currentUser?.profile_image} text="Profile" height={40} />
+</NavLink>
+</>
+...
+```
+
+### creating the logout function
+
+in `NavBar`.js:
+14. make sure `currentUser` and `setCurrentUser` are defined at the top of the NavBar function
+```jsx
+//make sure they are imported too:
+import { 
+    useCurrentUser,
+    useSetCurrentUser, 
+} from '../contexts/CurrentUserContext';
+import Avatar from './Avatar';
+// make sure you import axios too
+import axios from "axios";
+
+const NavBar = () => {
+    // defined here
+    const currentUser = useCurrentUser();
+    const setCurrentUser = useSetCurrentUser();
+...
+```
+
+15. create a `handleSignOut` event handler that runs an async function, inside the function, run a `try/catch` block that: 
+    - sends an `await` `post` request via `axios` to `"dj-rest-auth/logout/"`
+    - calls the `setCurrentUser` hook and sets its value to `null`
+16. in the catch statement, catch any `err`s and log them to the console.
+
+```jsx
+...
+const currentUser = useCurrentUser();
+const setCurrentUser = useSetCurrentUser();
+
+// handleSignOut running an async function
+const handleSignOut = async () => {
+    try {
+        // axios making the request to log the user out
+        await axios.post("dj-rest-auth/logout/");
+        // setting the value of the viewing user to no value
+        setCurrentUser(null);
+        // catching any potential errors and printing them for debug
+    } catch (err) {
+        console.log(err);
+    }
+};
+...
+```
+________________________________________________________________________
