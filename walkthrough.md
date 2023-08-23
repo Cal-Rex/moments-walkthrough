@@ -105,6 +105,17 @@
     - [More on Create Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL)
     - [More on Revoke Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL)
     - how to build an image upload form
+
+13. [Creating a Post - Part 2](#creating-a-post---part-2)
+    - Video: https://youtu.be/oP-PqSc7QbM
+    - how to send form data to an API
+    - create a cancel button 
+    - handling form errors
+    - using the axiosReq interceptor again
+
+14. [Setting up the Post Page](#setting-up-the-post-page)
+    - Video: https://youtu.be/Hya3y7zjlVw
+    - [PostPage starter code](https://github.com/Code-Institute-Solutions/moments-starter-code/tree/master/14a-starter-code)
     
 
 _________________________
@@ -1991,6 +2002,7 @@ ________________________________________________________________________________
 - [More on Create Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL)
 - [More on Revoke Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL)
 - how to build an image upload form
+- how to have an image preview
     
 as a prerequisite to this lesson, complete the following steps:
 
@@ -2219,5 +2231,153 @@ const handleChangeImage = (event) => {
 </Form.Group>
 ...
 ```
+_________________________________________________________________________
 
+## Creating a Post - Part 2
 
+- how to send form data to an API
+- create a cancel button
+
+### how to send form data to an API
+in the `PostCreatForm` component:
+1. declare a `useRef` hook called  `imageInput` and set its value to `null`
+```jsx
+...
+  const { title, content, image} = postData;
+
+  const imageInput = useRef(null)
+  ...
+```
+2. in the `image-upload` `Form.File` add a `ref` prop that calls the `imageInput` `useRef` hook
+```jsx
+...
+<Form.File id="image-upload" accept="image/*" ref={imageInput} onChange={handleChangeImage} />
+```
+3. import and create a `useHistory` hook called `history` to redirect users upon the form successfully submitting
+```jsx
+...
+const imageInput = useRef(null)
+const history = useHistory()
+```
+4. create an `async` `handleSubmit` function taking an `event` as a parameter. Inside its arrow function:
+    - `prevent` the `Default` submission behaviour of the `event` with `.preventDefault()`
+    - create a `formData` instance that consists of `new` `FormData()`
+    - `.append` the `formData` with the form "title" field, in the database, with the value of `title`
+    - repeat the last step, but for `content`
+    - `append` the `formData` with an upload for the `"image"` db field, except this time the value needs to be the first entry in the `files` array of the `current` `imageInput` hook.
+```jsx
+const handleSubmit = async (event) => {
+    event.preventDefault()
+    const formFata = new FormData();
+
+    formData.append('title', title)
+    formData.append('content', content)
+    formData.append('image', imageInput.current.files[0])
+}
+```
+> Because we are sending an image file as well as text to our API we need to refresh the user's access token before we make a request to create a post.
+
+5. next, inside `handleSubmit`, create a try catch block:
+```jsx
+const handleSubmit = async (event) => {
+    event.preventDefault()
+    const formData = new FormData();
+
+    formData.append('title', title)
+    formData.append('content', content)
+    formData.append('image', imageInput.current.files[0])
+
+    try {
+        // use the previously created axiosReq interceptor to refresh
+        // the login token when submitting the formData
+        const {data} = await axiosReq.post('/posts/', formData);
+        // data ^^^ will be created by the response from the API after awaiting
+        // the request for succussfully uploading the data
+        // as the API automatically assigns new records with ids, this can then be 
+        // targeted in the data variable to redirect the user to the new post
+        history.push(`/posts/${data.id}`)
+        // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^   via the push from history
+    } catch(err){
+        // incase theres an error, the catch handles it 
+        // and logs it to the console
+        console.log(err)
+        // then, if the error state isn't a 401
+        if (err.response?.status !== 401){
+        // the error state is updated, as the axiosReq 
+        // interceptor has logic to handle the 401 errors
+            setErrors(err.response?.data)
+        }
+    }
+}
+```
+5. a. Also, make sure that `axiosReq` and `useHistory` import properly:
+```jsx
+import { axiosReq } from "../../api/axiosDefaults"
+import { useHistory } from "react-router";
+```
+
+6. set an `onSubmit` prop on the `Form` component to run the `HandleSubmit` function
+```jsx
+...
+return (
+    <Form onSubmit={handleSubmit}>
+      <Row>
+    ...
+```
+
+7. test the new feature works by uploading something. if it works, you should see "/posts/1" in the url if it worked (1 was the post id, could be any number depending how many entries are in the db)
+
+### create a cancel button
+
+> Finally, let’s wire up our cancel button to take our user back to the previous page in their browser history.
+
+8. go to the cancel button in the form in `PostCreateForm`.js
+9. add an `onClick` prop that runs the `history` function, calling the `goBack()` method:
+```jsx
+<Button
+    className={`${btnStyles.Button} ${btnStyles.Blue}`}
+    onClick={() => history.goBack()}
+    >
+    cancel
+</Button>
+```
+
+10. Bonus! implement error handling, this can be done by copy/pasting the error handlers from `SignInForm`, thought the `image` error handler needs some small tweaking
+    - also, `Alert` needs to be imported from `"react-bootstrap/Alert"`
+    - `import Alert from "react-bootstrap/Alert";`
+```jsx
+...
+       name="title" 
+                value={title}
+                onChange={handleChange}
+                />
+        </Form.Group>
+        {errors.title?.map((message, idx) => 
+            <Alert variant="warning" key={idx}>{message}</Alert>
+        )}
+    ...
+
+     name="content" 
+                value={content}
+                onChange={handleChange}
+                />
+        </Form.Group>
+        {errors.content?.map((message, idx) => 
+            <Alert variant="warning" key={idx}>{message}</Alert>
+        )}
+    ...
+
+    <Form.File id="image-upload" accept="image/*" ref={imageInput} onChange={handleChangeImage} />
+            </Form.Group>
+            {errors?.image?.map((message, idx) => 
+                <Alert variant="warning" key={idx}>{message}</Alert>
+            )}
+            ...
+```
+
+_________________________________________________________________________
+
+## Setting up the Post page
+
+- [PostPage starter code](https://github.com/Code-Institute-Solutions/moments-starter-code/tree/master/14a-starter-code)
+- 
