@@ -83,8 +83,28 @@
     - wire up axiosRes instance in handleMount function to use response interceptor.
     - configured the request interceptor to always refresh the access token before proceeding with the actual request.
 
-11. 
+11. NavBar burger toggle with a custom hook
+    - Video: https://youtu.be/mezW9yuzzPk
+    - toggle nav bar menu
+    - functionality to automatically close our burger menu
+    - write code for this in NavBar file
+    - then refactor into own component
+    - create toggle component
+    - keep track of whether the user has clicked on the burger menu to expand it.
+    - [NavBar.js reviewed](#reviewing-navbarjs-as-a-whole)
 
+## 3. The Post component
+
+12. [Creating Posts - Part 1](#creating-posts---part-1)
+    - Video: https://youtu.be/FaUSSftBkBo
+    - build a form to create a post
+    - build an Asset component
+        -  [Asset.js Explained](#assetjs-explained)
+        -  display different versions of the component depending on the props passed to it.
+    - [more on Web API urls](https://developer.mozilla.org/en-US/docs/Web/API/URL)
+    - [More on Create Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL)
+    - [More on Revoke Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL)
+    - how to build an image upload form
     
 
 _________________________
@@ -1697,3 +1717,507 @@ const handleSignOut = async () => {
 ...
 ```
 ________________________________________________________________________
+
+## NavBar burger toggle with a custom hook
+
+- toggle nav bar menu
+- functionality to automatically close our burger menu
+- write code for this in NavBar file
+- then refactor into own component
+- create toggle component
+- keep track of whether the user has clicked on the burger menu to expand it.
+- text area form fields
+
+
+###  keep track of whether the user has clicked on the burger menu to expand it.
+
+in `NavBar.js`:
+1. in the function, make a useState hook for `expanded`
+    - set the default value to `false`
+    - mmake sure `useState` gets imported
+```jsx
+const [expanded, setExpanded] = useState(false)
+```
+
+2. with the state created, add it as a prop with the value of `{expanded}` to the `Navbar` component inside the return statement (don't get `NavBar` and `Navbar` confused here, `Navbar` is in the return statement of `NavBar.js`)
+```jsx
+...
+    return (
+        <Navbar expanded={expanded} className={styles.NavBar} expand="md" fixed="top">
+        ...
+```
+
+3. then, in the `Navbar.toggle` element, add an `onClick` attribute that calls an arrow function to run the `setExpanded` hook tp update the value of `expanded` to the oppositie of what it previously was
+```jsx
+...
+<Navbar.Toggle onClick={() => setExpanded(!expanded)} aria-controls="basic-navbar-nav" />
+...
+```
+> the status of the navbar menu is now being tracked, which allows us to start creating custom functionality based on the state of the menu
+
+4. up next to the `expanded` useState hook, import the `useRef` hook from react, create a variable called `ref`, set it's value to the `useRef` method, which is being passed a value of `null`
+```jsx
+...
+    const [expanded, setExpanded] = useState(false)
+    const ref = useRef(null)
+    ...
+```
+
+5. now, attach this new variable as a prop to `Navbar.toggle`, passing the value of itself, just like the expanded prop
+```jsx
+...
+{currentUser && addPostIcon}
+<Navbar.Toggle ref={ref} onClick={() => setExpanded(!expanded)} aria-controls="basic-navbar-nav" />
+//              ^    ^
+...
+```
+
+6. import the `useEffect` hook, then write out a `useEffect` hook that runs an arrow function:
+    - inside it, create a variable called `handleClickOutside` when passes an arrow function as its value, taking an event as an argument
+    - inside this function, write an `if` statement that checks the `current` value of `ref`
+        - a double amersand is then used to `setExpanded` to `false` if the `ref` is not the target of the click event:
+    ```jsx
+    const ref = useRef(null)
+        useEffect(() => {
+            const handleClickOutside = (event) => {
+                if (ref.current && !ref.current.contains(event.target)){
+                    setExpanded(false)
+                }
+            }
+        })
+    ```
+    - inside the `useEffect` method, inside the arrow function, add an oldschool `addEventListener` that listens out for `mouseup` events and runs the `handleClickOutside` function when there is a `mouseup` event.
+    - then, straight after it, add a `return` statement that `remove`s the `EventListener` so that it wont stack every time the useEffect hook is run, which could cause errors in the future
+    - finally, add the dependency array of `[ref]` to the `useEffect` hook
+    ```jsx
+    ...
+        useEffect(() => {
+            const handleClickOutside = (event) => {
+                if (ref.current && !ref.current.contains(event.target)){
+                    setExpanded(false)
+                }
+            }
+
+            document.addEventListener('mouseup', handleClickOutside)
+            return () => {
+                document.removeEventListener('mouseup', handleClickOutside)
+            }
+        }, [ref]);
+    ...
+    ```
+> Now, we can toggle the burger menu  and hide it when we click away or choose one of the dropdown options.
+
+> Let’s now refactor all this code to a custom hook.  
+
+
+### refactor into own component
+7. in the `src` folder, create a `hooks` folder 
+
+8. in the new folder, create a the file `useClickOutsideToggle.js`
+
+9. inside the new file, use the `rafce` snippet to create the component template
+
+10. copy the states, ref and useEffect hook that all handles the clickOutside functionality and paste it into the new component:
+    - change the `return` statement to return an object containing `expanded`, `setExpanded` and `ref`
+```jsx
+import {useState, useEffect, useRef} from 'react'
+
+const useClickOutsideToggle = () => {
+    // states
+    const [expanded, setExpanded] = useState(false)
+    // ref
+    const ref = useRef(null)
+
+    // useEffect
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (ref.current && !ref.current.contains(event.target)){
+                setExpanded(false)
+            }
+        }
+
+        document.addEventListener('mouseup', handleClickOutside)
+        return () => {
+            document.removeEventListener('mouseup', handleClickOutside)
+        }
+    }, [ref]);
+  return {expanded, setExpanded, ref}
+}
+
+export default useClickOutsideToggle
+```
+
+11. now, back in `NavBar`.js, `spread` the values of `expanded`, `setExpanded` and `ref` into the new `useClickOutsideToggle()`;
+    - don't forget to import the new function!
+```jsx
+...
+const currentUser = useCurrentUser();
+const setCurrentUser = useSetCurrentUser();
+
+const {expanded, setExpanded, ref} = useClickOutsideToggle();
+
+const handleSignOut = async () => {
+...
+```
+
+### reviewing `NavBar`.js as a whole:
+```jsx
+import { Container, Navbar, Nav } from 'react-bootstrap';
+import React from 'react'
+import logo from '../assets/logo.png';
+import styles from '../styles/NavBar.module.css';
+import { NavLink } from 'react-router-dom';
+import { 
+    useCurrentUser,
+    useSetCurrentUser, 
+} from '../contexts/CurrentUserContext';
+import Avatar from './Avatar';
+import axios from "axios";
+import useClickOutsideToggle from '../hooks/useClickOutsideToggle';
+
+const NavBar = () => {
+    // statehooks to hold the value 
+    //of the current user accessing the page
+    const currentUser = useCurrentUser();
+    const setCurrentUser = useSetCurrentUser();
+
+    // state of the navbar, if its been expanded or not
+    // handles the opening and closing of it with
+    // the useClickOutsideToggle custom hook
+    // runs like a hook when setExpanded is procced in the render
+    const {expanded, setExpanded, ref} = useClickOutsideToggle();
+
+    // the function called by the sign out button that
+    // sends a request to the server to log the user out.
+    // called in the render
+    const handleSignOut = async () => {
+        try {
+            await axios.post("dj-rest-auth/logout/");
+            setCurrentUser(null);
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    // the function that adds an "add post" icon
+    // if the user if logged in. 
+    // called in the render
+    const addPostIcon = (
+        <NavLink
+            // css styles
+            className={styles.NavLink}
+            activeClassName={styles.Active}
+            //changes the url to this, proccing changes
+            // from the Routes back in App.js
+            to="/posts/create">
+                <i className='far fa-plus-square'></i>Add post
+        </NavLink>
+    )
+
+    // the function that adds icons
+    // if the user if logged in. 
+    // called in the render
+    const loggedInIcons = (
+        <>
+        <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/feed">
+            <i className='fas fa-stream'></i>Feed
+        </NavLink>
+        <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/liked">
+            <i className='fas fa-heart'></i>Liked
+        </NavLink>
+        <NavLink className={styles.NavLink} to="/" onClick={handleSignOut}>
+                     {/* handleSignout method being called ^^^^^^^^^^^^^^^ */} 
+            <i className='fas fa-sign-out-alt'></i>Sign Out
+        </NavLink>
+        <NavLink className={styles.NavLink} to={`/profiles/${currentUser?.profile_id}`}>
+{/* targets user profile_id from the database only if(?) currentUser has a value ^^^*/}
+            <Avatar src={currentUser?.profile_image} text="Profile" height={40} />
+        </NavLink>
+        </>
+    )
+
+    // the function that adds icon
+    // if the user if logged out. 
+    // called in the render
+    const loggedOutIcons = (
+        <>
+        <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signin">
+        {/* this is a class ^^^^^^^^^^^^ and this is a pseudoclass ^^^^^^^*/}
+            <i className='fas fa-sign-in-alt'></i>Sign In
+        </NavLink>
+        <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signup">
+            <i className='fas fa-user-plus'></i>Sign up
+        </NavLink>
+        </>
+    )
+
+
+
+    return (
+        <Navbar expanded={expanded} className={styles.NavBar} expand="md" fixed="top">
+            <Container>
+                <NavLink to="/">
+                <Navbar.Brand>
+                    <img src={logo} alt="logo" height="45"/>
+                </Navbar.Brand></NavLink>
+                {currentUser && addPostIcon}  // Double Ampersand means "if Truthy"
+                <Navbar.Toggle ref={ref} onClick={() => setExpanded(!expanded)} aria-controls="basic-navbar-nav" />
+// useClickOutsideToggle procced ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
+                <Navbar.Collapse id="basic-navbar-nav">
+                    <Nav className="ml-auto">
+                    <NavLink exact className={styles.NavLink} activeClassName={styles.Active} to="/">
+                        <i className="fas fa-home"></i>Home
+                    </NavLink>
+                    {currentUser ? loggedInIcons : loggedOutIcons}
+// condition statement to display which const of icons depending if currentUser has a value
+                    </Nav>
+                </Navbar.Collapse>
+                
+            </Container>
+        </Navbar>
+    )
+}
+
+export default NavBar
+```
+_____________________________________________________________________________________
+
+## Creating Posts - Part 1
+- build a form to create a post
+- build an Asset component
+    -  [Asset.js Explained](#assetjs-explained)
+    -  display different versions of the component depending on the props passed to it.
+- [more on Web API urls](https://developer.mozilla.org/en-US/docs/Web/API/URL)
+- [More on Create Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL)
+- [More on Revoke Object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL)
+- how to build an image upload form
+    
+as a prerequisite to this lesson, complete the following steps:
+
+1. Add this [upload.png](https://codeinstitute.s3.amazonaws.com/AdvancedReact/upload.png) graphic to to the `assets` folder
+2. create the following 2 files in the styles folder:
+    - [PostCreateEditForm.module.css](https://github.com/mr-fibonacci/moments/blob/e68f179b130a1554b8122990cf92ab931988eb79/src/styles/PostCreateEditForm.module.css)
+    - [Asset.module.css](https://github.com/mr-fibonacci/moments/blob/e68f179b130a1554b8122990cf92ab931988eb79/src/styles/Asset.module.css)
+3. create a new folder called `posts` inside the `src/pages` folder
+4. inside the new `posts` folder, create a file called `PostCreateForm.js`
+    - paste in this [boilerplate code](https://github.com/Code-Institute-Solutions/moments-starter-code/tree/master/13-starter-code)
+5. create a new file called `Asset.js` in the `components` folder
+    - paste in this [bolerplate code](https://github.com/Code-Institute-Solutions/moments/blob/e68f179b130a1554b8122990cf92ab931988eb79/src/components/Asset.js)
+
+
+### Asset.js explained
+```jsx
+import React from "react";
+import { Spinner } from "react-bootstrap";
+import styles from "../styles/Asset.module.css";
+
+// We’ve destructured the props our Asset  
+// component may receive: spinner, src and message. 
+// This makes it a multi-purpose component that can  
+// render any combination of the  props that are passed to it. 
+const Asset = ({ spinner, src, message }) => {
+//            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  return (
+    <div className={`${styles.Asset} p-4`}>
+    {/* Our logic here with the double ampersand (&&)
+     first checks if the prop exists, */}
+      {spinner && <Spinner animation="border" />}
+      {src && <img src={src} alt={message} />}
+      {message && <p className="mt-4">{message}</p>}
+    {/* and if it does, then renders the 
+    element within the boolean expression.*/}
+    {/*For example, if we don’t pass a spinner 
+     prop, it’s value will be undefined, and so the 
+     spinner component won’t be rendered.*/}
+    </div>
+  );
+};
+
+export default Asset;
+```
+
+steps:
+
+1. create a new `Route` for adding a new post where it renders the `PostCreateForm` component, in `App.js`:
+```jsx
+...
+    <Route exact path="/signup" render={() => <SignUpForm />} />
+    <Route exact path="/posts/create" render={() => <PostCreateForm />} />
+    // this one ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    <Route render={() => <p>Page not found!</p>}></Route>
+</Switch>
+...
+```
+
+2. Go to `PostCreateForm`.js and replace the `ASSET` placeholder text with the `Asset` component and pass it the following props:
+    - src = `{upload}`
+    - message = `"Click or tap to upload an image"`
+```jsx
+...
+<Form.Label
+    className="d-flex justify-content-center"
+    htmlFor="image-upload"
+>
+    <Asset src={Upload} message={"Click or tap to upload an image"} />
+</Form.Label>
+...
+```
+
+3. underneath the `Form.Label` wrapping the `Asset` component, the `Form.File` element that will handle the image upload:
+```jsx
+...
+<Form.Group className="text-center">
+              
+    <Form.Label
+        className="d-flex justify-content-center"
+        htmlFor="image-upload"
+    >
+        <Asset src={Upload} message={"Click or tap to upload an image"} />
+    </Form.Label>
+    <Form.File id="image-upload" accept="image/*" />
+    {/* the Asterisk after the trailing slash ^^ means users can only upload images*/}
+</Form.Group>
+```
+
+4. Next, create the code for the text-based form fields, the state variables to handle the form data, and also the hooks to track and update the state variables of the form fields (`handleChange` function)
+```jsx
+...
+const [postData, setPostData] = useState({
+    title: '',
+    content: '',
+    image: '',
+  })
+  const { title, content, image} = postData;
+
+  const handleChange = (event) => {
+    setPostData({
+        ...postData,
+        [event.target.name]: event.target.value,
+    })
+  }
+
+  const textFields = (
+    <div className="text-center">
+        <Form.Group controlId="title">
+            <Form.Label>Title</Form.Label>
+            <Form.Control 
+                className={styles.Input} 
+                type="text"
+                name="title" 
+                value={title}
+                onChange={handleChange}
+                />
+        </Form.Group>
+
+        <Form.Group controlId="content">
+            <Form.Label>Content</Form.Label>
+            <Form.Control 
+                className={styles.Input} 
+                as="textarea"
+                rows={6}
+                name="content" 
+                value={content}
+                onChange={handleChange}
+                />
+        </Form.Group>
+
+      <Button
+        className={`${btnStyles.Button} ${btnStyles.Blue}`}
+        onClick={() => {}}
+      >
+        cancel
+      </Button>
+      <Button className={`${btnStyles.Button} ${btnStyles.Blue}`} type="submit">
+        create
+      </Button>
+    </div>
+  );
+
+...
+
+// then added as objects in the return render:
+<Container
+    className={`${appStyles.Content} ${styles.Container} d-flex flex-column justify-content-center`}
+    >
+    <Form.Group className="text-center">
+        
+        <Form.Label
+            className="d-flex justify-content-center"
+            htmlFor="image-upload"
+        >
+            <Asset src={Upload} message={"Click or tap to upload an image"} />
+        </Form.Label>
+        <Form.File id="image-upload" accept="image/*" />
+    </Form.Group>
+    <div className="d-md-none">{textFields}</div>
+                {/* called here ^^^^^^^^^^ */}
+</Container>
+          ...
+```
+
+5. create a function that handles the changes to the file input field:
+```jsx
+const handleChangeImage = (event) => {
+    if (event.target.files.length){
+        // removes any urls stored in the image state
+        // as the function launches, before the state is set
+        // this stops the upload of multiple filepaths
+        URL.revokeObjectURL(image)
+        setPostData({
+            ...postData,
+            // URL.createObjectURL creates a local link to the file passed into it.  
+            image: URL.createObjectURL(event.target.files[0]),
+            // event.target.files, stores files as an array in order to handle
+            // multiple uploads, as this function only handles one image
+            // at a time, target the first value in the variable
+            // the revokeObjectURL prevents more than one value being 
+            // added to this array in this function
+        })
+    }
+}
+```
+
+6. add the new `handleChangeImage` function to an `onChange` attribute in the `image-upload` `Form.File` field.
+```jsx 
+    <Form.File id="image-upload" accept="image/*" onChange={handleChangeImage} />
+```
+
+7. at the top of the `Form.Group` for uploading the image, add a ternary statement that, depending on wether an image has been successfully uploaded, a preview is rendered, else the default instruction to upload an image renders instead:
+```jsx
+<Form.Group className="text-center">
+...
+{/* Ternary statement start, if image state has a value...*/}
+    {image ? (
+        <>
+        <figure>
+        {/* in the figure tags, display the image, where the state is the src */}
+            <Image className={appStyles.Image} src={image} rounded />
+            {/* the rounded prop is a bootstrap prop that rounds the edges of images*/}
+        </figure>
+        <div>
+        {/* The htmlFor attribute here links this label to the Form.File attribute*/}
+        
+            <Form.Label
+                className={`${btnStyles.Button} ${btnStyles.Blue} btn`}
+                htmlFor="image-upload"
+        {/* Which turns the label into a button that triggers the file upload field*/}
+            >
+                Change the image
+            </Form.Label>
+        </div>
+        </>
+    ) : (
+        <Form.Label
+        className="d-flex justify-content-center"
+        htmlFor="image-upload"
+        >
+            <Asset src={Upload} message={"Click or tap to upload an image"} />
+        </Form.Label>
+    )}
+    
+    <Form.File id="image-upload" accept="image/*" onChange={handleChangeImage} />
+</Form.Group>
+...
+```
+
+
