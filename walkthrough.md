@@ -131,12 +131,27 @@
     - use the code from the previous section to like and unlike posts
     - using the spread operator witht he map function to update the state of props with an updated record
 
-## 4. The PostPage Component
+## 4. The PostsPage Component
 
 17. [Displaying the Posts List - Part 1](#displaying-the-posts-list---part-1)
     - Video: https://youtu.be/a6__dkf0_ys
-    - 
-        
+    - create the PostsPage component, attach it to the Home, Feed and Liked routes, and add filters.
+    - these filters will allow code in later sections to:
+        - display an array of posts depending on:
+            - if the user wants to see all posts 
+            - posts by profiles they follow
+            - posts they have already liked.
+
+18. [Displaying te Posts list - part 2](#displaying-te-posts-list---part-2)
+    - Video: https://youtu.be/RoW3YfjbKis
+    - add the logic to make requests to the API based on filters
+    - display a loading spinner while loading API data
+    - display message if theres no results from filters
+    - `useLocation` hook explained
+
+19. [making a working search bar](#making-a-working-search-bar)
+    - adding a search bar
+    - have the search criteria update every time the value in the search bar changes
 
 _________________________
 
@@ -2897,7 +2912,7 @@ __________________________________________________________________
 ## Displaying the Posts List - Part 1
 
 - create the PostsPage component, attach it to the Home, Feed and Liked routes, and add filters.
-these filters will allow code in later sections to:
+- these filters will allow code in later sections to:
     - display an array of posts depending on:
         - if the user wants to see all posts 
         - posts by profiles they follow
@@ -2971,5 +2986,317 @@ function App() {
 ```
 ____________________________________________________________________
 
-    - create a search bar so users can do text searches. 
-    - functionality to keep loading posts for our users as they keep scrolling.
+## Displaying te Posts list - part 2
+
+- add the logic to make requests to the API based on filters
+- display a loading spinner while loading API data
+- display message if theres no results from filters
+- `useLocation` hook explained
+
+
+go to `PostsPage.js`
+1. inside the `PostsPage` function argument (where you would normally put a `props` variable), put the following code:
+    - `{ message, filter = "" }`
+    - this immediately destructures the filter and message props
+```jsx
+function PostsPage({ message, filter = ""}) {
+```
+2. next, create a `useState` hook for `posts` that will contain an object with a KVP of `{ results: [] }`, just like before in `PostPage`
+```jsx
+function PostsPage({ message, filter = ""}) {
+    const [posts, setPosts] = useState({ results: [] });
+```
+
+> As it will take a moment for the posts to load, it also makes sense to keep track of whether  or not all the data has been fetched.  
+3. create a `useState` hook that tracks wether the page `hasLoaded`. set it's default value to false, which can be updated to true when everything loads
+```jsx
+function PostsPage({ message, filter = ""}) {
+    const [posts, setPosts] = useState({ results: [] });
+    // We can use this to show a loading spinner
+    // to our users as they wait for posts to load.
+    const [hasLoaded, setHasLoaded] = useState(false);
+``` 
+
+> We’ll also have to re-fetch posts again when  the user clicks between the home, feed and liked pages.To detect the url change, we’ll  auto-import the `useLocation` react router hook.
+4. `{ bind }` `pathname` from the `useLocation` hook into a `pathname` object:
+    - the `useLocation` hook contains a `pathname` object. when establishing a const of `{ pathname }`, the object in `useLocation` matching that name is targeted and stored directly as a variable.
+        - heres a simple example of how it works that you can put in python tutor:
+            -   ```js
+                const obj = { a: 1, b: { c: 2 } };
+                const { a } = obj; // a is constant
+                console.log(a)
+                ```
+- example in actual project:
+```jsx
+function PostsPage({ message, filter = ""}) {
+    const [posts, setPosts] = useState({ results: [] });
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const { pathname } = useLocation();
+    // The useLocation hook comes from the react-router library,  
+    // and returns an object with data about
+    // the current URL that the user is on.   
+    // We need to know this to detect if the user has 
+    // flicked between home, feed and liked pages.
+    ...
+```
+
+5. underneath the new variables, create a new `useEffect` hook that runs an async function into a `fetchPosts` object
+    - inside it, use a `try/catch` block and make a `get` request with `axiosReq` for `posts` with the value of the `filter` prop
+```jsx
+useEffect(() => {
+    const fetchPosts = async () => {
+        try {
+            // The request string will contain our filter 
+            // parameter, which comes from the filter prop we set in our routes. 
+            const {data} = await axiosReq.get(`/posts/?${filter}`)
+                // It will tell our  API if we want to see all the posts,  
+                // just posts by the profiles our user has  followed, or just the posts they have liked.
+        } catch (err) {
+
+        }
+    }
+})
+```
+
+6. so long as there are no errors, `set` the `posts` state to the `data` returned from the API
+7. now that the data from the api has been successfully retreived, update the status of `hasLoaded`
+```jsx
+useEffect(() => {
+    const fetchPosts = async () => {
+        try {
+            const {data} = await axiosReq.get(`/posts/?${filter}`)
+            // update the posts state with the returned api data
+            setPosts(data)
+            // now that its logged, update the state of hasLoaded
+            setHasLoaded(true)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+})
+```
+
+8. with the `fetchPosts` async function created, run it inside the `useEffect` hook, also `set`ting `hasLoaded` to false again as the `data` will be getting refreshed with a new request
+9. lastly, add the dependencies for the `useEffect` hook, which will be whenever the `filter` or `pathname` props update
+```jsx
+useEffect(() => {
+    const fetchPosts = async () => {
+        try {
+            const {data} = await axiosReq.get(`/posts/?${filter}`)
+            setPosts(data)
+            setHasLoaded(true)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
+    setHasLoaded(false);
+    fetchPosts();
+}, [filter, pathname]);
+```
+
+10. go to the return statement of the component, remove the placeholder text and write a ternary statement.
+11. the statement will first check if `hasLoaded` is `true`, which will display post content. the `else` condition will contain the loading spinner
+```jsx
+return (
+    <Row className="h-100">
+    <Col className="py-2 p-0 p-lg-2" lg={8}>
+        <p>Popular profiles mobile</p>
+        {hasLoaded ? (
+
+        ) : (
+            console.log("LOADING.........")
+        )}
+    </Col>
+```
+
+12. in the `true` condition, nest a JSX fragment containing second ternary conditional statement. This statement will check if there is any posts/objects in `posts.results` by checking its length.
+    - inside the `true` condition of the nested ternary, add a console log that shows that its working for now
+    - inside the `else` condition, add a console log saying theres no results
+```jsx
+return (
+    <Row className="h-100">
+    <Col className="py-2 p-0 p-lg-2" lg={8}>
+        <p>Popular profiles mobile</p>
+        {hasLoaded
+            ? (
+                <>
+                {posts.results.length 
+                    ? (console.log('Posts got length yo')) 
+                    : (console.log("no posts for this criteria, buddy"))
+                }
+                </>
+            )
+            : (console.log("LOADING........."))
+        }
+    </Col>
+    ...
+```
+
+13. check everything is logging correctly in the console.
+
+14. inside the `posts.results.length` conditional, replace the console log in the `true` condition with a `map`ping of the `post.results`
+    - inside the `map` method, set an iterative element of `post` (so basically you've created a `for post in posts` loop)
+    - for each iteration, the method should return a `Post` component (imported) with a key prop of `{post.id}`
+        - !REMEMBER! unique `key` props need to be added to objects rendered by a `map` function, This unique identifier is used by React to keep track of which elements need to be rerendered whenever the component is updated.
+    - it should also spread the values of `post`
+    - it should also be passed the `setPosts` hook as a prop too
+
+```jsx
+{hasLoaded 
+    ? (
+        <>
+        {posts.results.length 
+            ? posts.results.map(post => (
+                <Post key={post.id} {...post} setPosts={setPosts} />
+            ))
+            : (console.log("no posts for this criteria, buddy"))
+            }
+        </>
+    ) : (console.log("LOADING........."))}
+```
+
+15. next, import the no-results image into the the `PostsPage` component, and have it render in the `else` condition for `post.results.length`:
+```jsx
+import NoResults from "../../assets/no-results.png"
+...
+{hasLoaded ? (
+    <>
+    {posts.results.length 
+    ? posts.results.map(post => (
+        <Post key={post.id} {...post} setPosts={setPosts} />
+    ))
+    : <Container className={appStyles.Content}>
+        <Asset src={NoResults} message={message} />
+    </Container>
+    }
+    </>
+) : (
+    console.log("LOADING.........")
+)}
+```
+
+16. finally, in the `else` of the `hasLoaded` ternary, add the `Asset` component with the spinner prop:
+```jsx
+{hasLoaded ? (
+    <>
+    {posts.results.length 
+    ? posts.results.map(post => (
+        <Post key={post.id} {...post} setPosts={setPosts} />
+    ))
+    : <Container className={appStyles.Content}>
+        <Asset src={NoResults} message={message} />
+    </Container>
+    }
+    </>
+) : (
+    <Container className={appStyles.Content}>
+        <Asset spinner />
+    </Container>
+)}
+```
+
+______________________________________________________________
+
+## making a working search bar
+
+- create a search bar so users can do text searches. 
+    - adding a search bar
+    - have the search criteria update every time the value in the search bar changes
+
+go to `PostsPage`
+1. in the `return` statement, under the popular profiles mobile placeholder add athis font awesome icon:
+```jsx
+<i className={`fas fa-search ${styles.SearchIcon}`} />
+```
+
+2. under the new icon, add a `Form` component, give it the class `styles.SearchBar`and an onSubmit prop where an arrow function takes the `event` and prevents the `default` behaviour of the `Form` component.
+ > if the user hits enter. Our API requests will be handled by an onChange event, not the onSubmit.
+ ```jsx
+return (
+    <Row className="h-100">
+    <Col className="py-2 p-0 p-lg-2" lg={8}>
+        <p>Popular profiles mobile</p>
+        <Form className={styles.SearchBar} onSubmit={(event) => event.preventDefault()}>
+            
+        </Form>
+ ```
+
+ 3. inside the `Form`, create a `Form.Control` conponent with a type of `"text"` and a bootstrap utility class that gives it a small margin on the right on small screensizes and up. give it a placeholder value of `"Search posts"`
+ ```jsx
+<Form className={styles.SearchBar} onSubmit={(event) => event.preventDefault()}>
+<Form.Control
+    type="text"
+    className="mr-sm-2"
+    placeholder="Search posts"
+/>
+
+</Form>
+ ```
+
+4. check the search bar is now visible
+
+### handling search queries
+
+in `PostsPage.js`
+5. create a `useState` hook for `query`, it should have an empty string as default.
+```jsx
+function PostsPage({ message, filter = ""}) {
+    const [posts, setPosts] = useState({ results: [] });
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const {pathname} = useLocation();
+    const [query, setQuery] = useState(""); // <----------
+```
+
+6. back in the `Form.Control` element for the search bar, add an `onChange` handler that runs a function with the `event` as a parameter and runs the `setQuery` hook that takes the `event.target.value`
+```jsx
+<Form.Control
+    type="text"
+    onChange={(event) => setQuery(event.target.value)} // <----------
+    className="mr-sm-2"
+    placeholder="Search posts"
+/>
+```
+
+7. now update the API request in `fetchPosts`. append the `get` path with `search=${query}` and update the dependencies of the `useEffect` hook so it runs every time the query state updates
+```jsx
+ useEffect(() => {
+    const fetchPosts = async () => {
+        try {                                           // added on the end here
+            const {data} = await axiosReq.get(`/posts/?${filter}search=${query}`)
+            setPosts(data)
+            setHasLoaded(true)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+    setHasLoaded(false);
+    fetchPosts();
+}, [filter, query, pathname]);
+```
+> Now our basic search functionality is working, but we have a problem: a request is fired to our API for every keystroke our user makes in the input field, which means we are making unnecessary requests. It is also a poor user experience, because every time I press a key, the whole page flashes.
+
+> It would be better to wait a moment after the user has stopped typing and then perform the API request. So let's add some simple functionality to do that.
+
+8. inside the `useEffect` hook, create a `timer` variable that uses the `setTimeout` function. move the call to `fetchPost` inside it and set the timer to `500`
+    - also, add a return statement after the `timer` variable that `clear`s the `Timeout` function. to keep things tidy and prevent potential errors
+```jsx
+useEffect(() => {
+    const fetchPosts = async () => {
+        try {
+            const {data} = await axiosReq.get(`/posts/?${filter}search=${query}`)
+            setPosts(data)
+            setHasLoaded(true)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+    setHasLoaded(false);
+    const timer = setTimeout(() => {
+        fetchPosts();
+    }, 500)
+    return () => {
+        clearTimeout(timer);
+    };
+}, [filter, query, pathname]);
+```
