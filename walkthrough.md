@@ -135,6 +135,7 @@
 
 17. [Displaying the Posts List - Part 1](#displaying-the-posts-list---part-1)
     - Video: https://youtu.be/a6__dkf0_ys
+    - 
         
 
 _________________________
@@ -2894,3 +2895,81 @@ const handleUnlike = async () => {
 __________________________________________________________________
 
 ## Displaying the Posts List - Part 1
+
+- create the PostsPage component, attach it to the Home, Feed and Liked routes, and add filters.
+these filters will allow code in later sections to:
+    - display an array of posts depending on:
+        - if the user wants to see all posts 
+        - posts by profiles they follow
+        - posts they have already liked.
+
+> As our PostsPage component will be reusable, we’ll be able to use it for all our list view pages, by simply adding a filter on the data we fetch from the API.
+
+**set up:**
+- create a new styles file called PostsPage.module.css
+- [copy the style css for PostsPage.module.css from this link](https://github.com/Code-Institute-Solutions/moments-starter-code/blob/master/15-starter-code/PostsPage.module.css)
+- [add this no-results.png to your assets folder](https://codeinstitute.s3.amazonaws.com/AdvancedReact/no-results.png)
+- create a new file in the `posts` folder called `PostsPage.js` and paste in the [starter code from here](https://github.com/Code-Institute-Solutions/moments-starter-code/blob/master/15-starter-code/PostsPage.js)
+
+
+**steps**
+1. create a `Route` for the newly created `PostPage` in `App.js`
+    - replace the empty path for the homepage with it
+    - add a `message` prop to it that says `"No results found. Adjust your search keyword"`
+```jsx
+<Switch>
+    <Route exact path="/" render={() => <PostsPage message="No results found. Adjust your search keyword" />} />
+    <Route exact path="/signin" render={() => <h1><SignInForm /></h1>} />
+    ...
+```
+
+2. next, at the top of the `App` function, import the `useCurrentUser` hook and call it in a `currentUser` variable at the top of the file, so that the current user credentials are logged for interrogation
+3. then, establish a `profile_id` const that checks the `profile_id` of the user credentials passed into `currentUser`, checking that it has a value with `?`. if it doesn't have a value (`||`) make its value an empty string
+```jsx
+function App() {
+  const currentUser = useCurrentUser()
+  const profile_id = currentUser?.profile_id || "";
+  ...
+```
+
+4. copy the path for the `/` route and change its path to `/feed`
+    - amend its `message text to the value below`
+    - add a `filter` prop and pass it the following filter for the api:
+        - filter={`owner__followed__owner__profile=${profile_id}&`}
+        - as you can see this follows the same method of querying the api in the django Rest tutorial. jump back there for more info
+```jsx
+<Switch>
+    <Route exact path="/" render={() => <PostsPage message="No results found. Adjust your search keyword" />} />
+    <Route exact path="/feed" render={
+            () => <PostsPage 
+            message="No results found. Adjust your search keyword or follow a user" 
+            filter={`owner__followed__owner__profile=${profile_id}&`}
+            />
+        } 
+    />
+    <Route exact path="/signin" render={() => <h1><SignInForm /></h1>} />
+```
+
+5. repeat the these steps to create the `/liked` route. amending its `message` and its `filter` props with the following values:
+```jsx
+<Switch>
+    <Route exact path="/" render={() => <PostsPage message="No results found. Adjust your search keyword" />} />
+    <Route exact path="/feed" render={
+    () => <PostsPage 
+    message="No results found. Adjust your search keyword or follow a user" 
+    filter={`owner__followed__owner__profile=${profile_id}&`}
+    />
+    } 
+    />
+    <Route exact path="/liked" render={
+    () => <PostsPage 
+    message="No results found. Adjust your search keyword or like a post" 
+    filter={`likes__owner__profile=${profile_id}&ordering=-likes__created_at&`}
+    />
+    } 
+    />
+```
+____________________________________________________________________
+
+    - create a search bar so users can do text searches. 
+    - functionality to keep loading posts for our users as they keep scrolling.
