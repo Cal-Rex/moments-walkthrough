@@ -125,8 +125,17 @@
 15. [Creating the Post Component frontend](#creating-the-post-component-frontend)
     - Video: https://youtu.be/SQdcuFRbUtU
     - take the data fetched from the last section and display it on a page
-    
-    
+
+16. [Liking and Unliking Posts](#liking-and-unliking-posts)
+    - Video: https://youtu.be/lr3wph-rI20
+    - use the code from the previous section to like and unlike posts
+    - using the spread operator witht he map function to update the state of props with an updated record
+
+## 4. The PostPage Component
+
+17. [Displaying the Posts List - Part 1](#displaying-the-posts-list---part-1)
+    - Video: https://youtu.be/a6__dkf0_ys
+        
 
 _________________________
 
@@ -2728,3 +2737,160 @@ const Post = (props) => {
 
 22. check it works.
 
+_________________________________________________________________________
+
+## Liking and Unliking Posts
+
+- use the code from the previous section to like and unlike posts
+- using the spread operator witht he map function to update the state of props with an updated record
+
+in `Post.js`
+1. Amend the props to include the `setPosts` function from `PostPage`, which has previously been passed in
+2. create an `async` `handleLike` function
+3. inside it, make a `try/catch` block that makes a `post` request to `/likes/` with the `post` `id` using the `axiosRes` interceptor from `APIDefaults`, and after `await`ing the response, stores the response in a `data` object
+```jsx
+const handleLike = async () => {
+    try {
+        const {data} = await axiosRes.post("/likes/", {post: id});
+    } catch (err) {}
+}
+```
+4. underneath the `data` const, call `setPosts()`, pass it an argument of `prevPosts` and run an arrow function
+    > At the moment we’re just reaching out for a single post for our Post page, however, our Post component will also live in pages where we’ll display multiple posts one after another. So eventually this function will have to handle checking if it has the right post id before applying the like to it.
+5. inside the arrow function, `spread` `prevPosts`, then update the array in `results` back in `PostPage`, do this by `map`ping the values of `prevPost` over the `post` prop
+```jsx
+const handleLike = async () => {
+    try {
+        const {data} = await axiosRes.post("/likes/", {post: id});
+        setPosts((prevPosts) => ({
+            ...prevPosts,
+            results: prevPosts.results.map()
+        }))
+    } catch (err) {}
+}
+```
+6. inside the `map` function, run another arrow function that takes `post` as its argument.
+    - inside that function, use a ternary conditional statement that checks that the `post` prop's id matches the `id` attribute. 
+    - if it matches, `return` a statement that `spread`s post, and updates the `likes_count` prop with whatever the value of `post.likes_count` is `+ 1`. it wil also set the like_id of the post to the id given by the `axiosRes` response `data`
+```jsx
+const handleLike = async () => {
+    try {
+        const {data} = await axiosRes.post("/likes/", {post: id});
+        setPosts((prevPosts) => ({
+            ...prevPosts,
+            results: prevPosts.results.map((post) => {
+                return post.id === id ? {
+                    ...post, likes_count: post.likes_count + 1, like_id: data.id
+                } : {}
+            }),
+        }));
+    } catch (err) {}
+}
+```
+
+7. if it doesnt match, just return `post` and nothing will happen.
+    > so that our map can move on to the next post in the prevPosts results array.
+```jsx
+const handleLike = async () => {
+    try {
+        const {data} = await axiosRes.post("/likes/", {post: id});
+        setPosts((prevPosts) => ({
+            ...prevPosts,
+            results: prevPosts.results.map((post) => {
+                return post.id === id ? {
+                    ...post, likes_count: post.likes_count + 1, like_id: data.id
+                } : post;
+            }),
+        }));
+    } catch (err) {}
+}
+```
+
+8. write a console log in the `catch` statement to log errors to the console:
+```jsx
+const handleLike = async () => {
+    try {
+        const {data} = await axiosRes.post("/likes/", {post: id});
+        setPosts((prevPosts) => ({
+            ...prevPosts,
+            results: prevPosts.results.map((post) => {
+                return post.id === id ? {
+                    ...post, likes_count: post.likes_count + 1, like_id: data.id
+                } : post;
+            }),
+        }));
+    } catch (err) {
+        console.log(err);
+    }
+}
+```
+
+9. heres that full function written out but annotated with comments to explain:
+```jsx
+const handleLike = async () => {
+    try {
+        // post request being bade to the db, with the "post" passed into the component
+        // on the PostPage level (parent component)
+            // it's trying to post a new like to the post with the id in the prop
+        // it then stores the response in a {data} object to be used
+        const {data} = await axiosRes.post("/likes/", {post: id});
+        // setPosts function imported from parent element taking a prevPost
+        // takes the previous state of the Post (prevPost) and spreads the data
+        // using the ... spread operator 
+        setPosts((prevPosts) => ({
+            ...prevPosts,
+            // it then takes that spreaded data and maps it over a post 
+            results: prevPosts.results.map((post) => {
+                // where it will then check the id of the post 
+                // to see if it matches the id of the prop
+                return post.id === id ? {
+                    // if it does, it spreads the post value, 
+                    // updating the likes_count and then setting the like_id 
+                    // to the id in the data from the response. which will then 
+                    // show that the like belongs to the user and the display will update 
+                    ...post, likes_count: post.likes_count + 1, like_id: data.id
+                    //if it doesnt match, it just returns the post object and does nothing
+                } : post;
+            }),
+        }));
+        //in the event of an error. log it.
+    } catch (err) {
+        console.log(err);
+    }
+}
+```
+
+10. now. repeat the process for the `handleUnlike` function to unlike posts:
+
+```jsx
+const handleUnlike = async () => {
+        try {
+            // same as above, except this time a "delete" request is being used
+            // nothing needs to be sent to the database this time, so we can
+            // target the existing like record directly by using the like_id
+            // prop as the value in the url
+            await axiosRes.delete(`/likes/${like_id}/`);
+            // again same as before, spread the data and map it over the posts
+            // to update with a new value
+            setPosts((prevPosts) => ({
+                ...prevPosts,
+                results: prevPosts.results.map((post) => {
+                    return post.id === id
+                    // only difference is, this time, set the likes_count prop to
+                    // the value of the likes_count in the post - 1.
+                        // also, set the like_id to null, 
+                        // as that record now doesn't exist.
+                    ? {...post, likes_count: post.likes_count - 1, like_id: null}
+                    : post;
+                }),
+            }));
+            // dont forget to catch and log your errors.
+        } catch (err) {
+            console.log(err)
+        }
+    }
+  
+```
+__________________________________________________________________
+
+## Displaying the Posts List - Part 1
