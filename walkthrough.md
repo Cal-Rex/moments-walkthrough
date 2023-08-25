@@ -153,6 +153,10 @@
     - adding a search bar
     - have the search criteria update every time the value in the search bar changes
 
+20. [Infinite Scroll](#infinite-scroll)
+    - Video: https://youtu.be/fNZ0hlutv-U
+    - how to implement infinite scroll
+
 _________________________
 
 ## Getting set up
@@ -3300,3 +3304,173 @@ useEffect(() => {
     };
 }, [filter, query, pathname]);
 ```
+_____________________________________________________________
+
+## Infinite scroll
+
+- react-infinite-scroll-component library
+    - [React infinite scroll documentation](https://www.npmjs.com/package/react-infinite-scroll-component)
+- [more infor about the Double NOT operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_NOT#double_not_!!)
+
+To enable infinite scrolling in a component, use the `rect-infinite-scroll-component` library
+- install it into the project vua the CLI before continuing: `npm install react-infinite-scroll-component`
+
+now, go to `PostsPage.js`:
+1. in the `posts.results.length ?` ternary statement, in the truth section, add an `InfiniteScroll` component
+    - inside the new components tag, add a prop of `children`, it's value should be the `post.results.map()` function that was originally inside the `posts.results.length` tab
+    - add a `dataLength` prop with the value of `posts.results.length`: tells the component how many posts are currently being displayed. 
+    - set a `loader` prop with the value being the `Asset` component with the `spinner` prop inside that
+    - set a `hasMore` prop with the value of `!!posts.next`: tells the `InfiniteScroll` component whether there is more data to load on  reaching the bottom of the current page of data.
+        > Our posts object from the API contains a key called `‘next’` which is a link to the next page of results. If we’re on the last page, that value will be null. So we can use this to determine if another page of results exists.
+    - add a final prop called `next`:
+        > This prop accepts a function that will be called to load the next page of results if the hasMore prop is true. For now we’ll  set this prop to an empty arrow function.
+```jsx
+{hasLoaded ? (
+    <>
+        {posts.results.length
+        ? (
+            <InfiniteScroll 
+                children={ // original function before infinite scroll implemented
+                    posts.results.map(post => (
+                        <Post key={post.id} {...post} setPosts={setPosts} />
+                    ))
+                }
+                dataLength={posts.results.length}
+                loader={<Asset spinner />}
+                hasMore={!!posts.next} // <------ next referring to API `next` value
+                    // The hasMore prop will only accept a boolean value of true or false,
+                    // so we’ll use a clever JavaScript logical operator called 
+                    // the double not operator, sometimes called the double bang 
+                    // because of its double exclamation marks. 
+                    // This operator returns true for truthy values, and false for falsy values.
+                next={() => {}}
+            />
+        ) : <Container className={appStyles.Content}>
+            <Asset src={NoResults} message={message} />
+        </Container>
+        }
+    </>
+```
+
+> We’re going to write the function to pass our ‘next’ prop in a separate utils folder. Then we’ll be able to reuse it later on for fetching  other paginated data, like comments and profiles.
+
+2. create a folde called `utils` in `src`
+3. inside the utils folder, create a `Utils.js` file
+4. inside the new file, export a const called `fetchMoreData` its value will be an `async` function with the parameters `resource` and `setResource`
+```jsx
+export const fetchMoreData = async (resource, setResource) => {
+                // these paramaters ^^^^^^^^^^^^^^^^^^^^^
+                // can be re-used with any paginated data
+                // like comments or profiles.
+}
+```
+> It will accept two arguments: resource  and setResource, so that we can render and update different types of data  for our InfiniteScroll component. For example, resource and setResource could be  posts and setPosts or comments and setComments.  
+
+5. inside the function create a `try/catch` block where a `get` request is made using the `axiosReq` interceptor to get the value of `next` from the passed in prop to `resource` (this could be posts/comments etc.)
+```jsx
+import { axiosReq } from "../api/axiosDefaults"
+
+export const fetchMoreData = async (resource, setResource) => {
+    try {
+        const {data} = await axiosReq.get(resource.next)
+    } catch(err) {
+        console.log(err)
+    }
+}
+```
+
+6. after the request is made, call `setResource` and pass it a callback function with `prevResource` as the argument. the function then `spread`s the passed in value of `prevResource` then updates the `next` attribute from the resource with the value of `next` retrieved from the `get` request.
+```jsx
+import { axiosReq } from "../api/axiosDefaults"
+
+export const fetchMoreData = async (resource, setResource) => {
+    try {
+        const {data} = await axiosReq.get(resource.next)
+        setResource(prevResource => ({
+            ...prevResource,
+            next:data.next, // <---- when this is passed back, 
+            // the component will know where to retrieve the next batch
+            // of API data from
+        }))
+    } catch(err) {
+
+    }
+}
+```
+> We also need to update the results array to include the newly fetched results, appending to the existing ones our state is rendering for the user. 
+
+> We can use the reduce method to add our new posts to the prevResource.results array
+- [reminder on how .reduce() works](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+AJS+2021_T1/courseware/7028f507c9354ee6b22e26cf15f99a6e/a63d3c4d5fae4cb3828c0840dfc03340/7?activate_block_id=block-v1%3ACodeInstitute%2BAJS%2B2021_T1%2Btype%40vertical%2Bblock%40509a83b3d5e14926a9cefefedaa6a583)
+
+7. update the `results` property of the `prevResource` with the `results` of the returned `data` of the `get` request,
+```jsx
+import { axiosReq } from "../api/axiosDefaults"
+
+export const fetchMoreData = async (resource, setResource) => {
+    try {
+        const {data} = await axiosReq.get(resource.next)
+        setResource(prevResource => ({
+            ...prevResource,
+            next:data.next,
+            results: data.results.reduce((acc, cur) => {}, prevResource.results)
+            // the reduce method takes the results variable 
+            // (which is initially a KVP of {results: []} )
+            // and reduces the spreaded data.results
+            // into the prevResource.results array,
+            // the acc(accumulator) callback, holds the [] value of results
+            // the cur(current) holds the current value in the iteration/cycle of the reduce loop
+            // every iteration/cycle of the reduce function takes the cur and pushed it into the
+            // acc array, createing a fresh results array 
+        }))
+    } catch(err) {
+
+    }
+}
+```
+> Now you might think that we could just display the next page of results our API has sent us. However, let’s imagine that our Moments application becomes really popular, and we have users adding new posts, and deleting ones all the time. 
+
+> Since we load the newest posts first, this means that if our users have added 5 more posts since we loaded the first page of ten results, our second page will contain 5 posts we are already displaying. So, we need a way to filter out any duplicates. To do this, we’ll need to check the array of existing results against the array of new results, and only add new results to our accumulator.
+
+> Fortunately, there’s a handy JavaScript method that we can use to do this, called some().
+
+8. inside the `reduce` function, add a return statement for every iteration that runs the `.some` method on the `acc`umulator. Passing it a callback of `accResult`, check if the `id`s of `accResult` are identical to the `id` of the `cur`rent iteration in the `reduce` loop
+```jsx
+try {
+    const {data} = await axiosReq.get(resource.next)
+    setResource(prevResource => ({
+        ...prevResource,
+        next:data.next,
+        results: data.results.reduce((acc, cur) => {
+            return acc.some((accResult) => accResult.id === cur.id)
+            // The some() method checks whether the callback passed to it returns true for  
+            // at least one element in the array and it stops running as soon as it does.
+        }, prevResource.results)
+    }))
+} catch(err) {console.log(err)}
+``` 
+
+> So we can use it to check if any of our post IDs in the newly fetched data matches an id that  
+already exists in our previous results. 
+
+9. add a conditional statement in the `return` in the `reduce` method, if the `some` method returns `true`, just return the `acc`umulator, else, `spread` the `acc`umulator and add the `cur`rent value.
+```jsx
+setResource(prevResource => ({
+    ...prevResource,
+    next:data.next,
+    results: data.results.reduce((acc, cur) => {
+        return acc.some((accResult) => accResult.id === cur.id)
+            ? acc : [...acc, cur];
+            // If the some() method finds a match,  
+            // we’ll just return the existing accumulator to the reduce method. 
+            // But if it doesn’t find a match, we know this is a new post, 
+            // so we can return our spread accumulator with the new post at the end.
+    }, prevResource.results)
+}))
+```
+
+10. with the `Utils` component now defined, return to `PostsPage.js`
+
+11. in the `next` prop of the `InfiniteScroll` component, import and add the new `fetchMoreData()` method from `Utils` and pass it `posts` and `setPosts` as its arguments.
+
+
+

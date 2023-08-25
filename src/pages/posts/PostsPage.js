@@ -11,6 +11,8 @@ import { useLocation } from "react-router";
 import { axiosReq } from "../../api/axiosDefaults";
 import Post from "./Post";
 import NoResults from "../../assets/no-results.png"
+import InfiniteScroll from "react-infinite-scroll-component";
+import { fetchMoreData } from "../../utils/Utils";
 
 function PostsPage({ message, filter = ""}) {
     const [posts, setPosts] = useState({ results: [] });
@@ -24,6 +26,7 @@ function PostsPage({ message, filter = ""}) {
                 const {data} = await axiosReq.get(`/posts/?${filter}search=${query}`)
                 setPosts(data)
                 setHasLoaded(true)
+                console.log(posts)
             } catch (err) {
                 console.log(err)
             }
@@ -35,7 +38,7 @@ function PostsPage({ message, filter = ""}) {
         return () => {
             clearTimeout(timer);
         };
-    }, [filter, query, pathname]);
+    }, [filter, query, pathname,]);
 
     return (
         <Row className="h-100">
@@ -52,11 +55,20 @@ function PostsPage({ message, filter = ""}) {
 
             {hasLoaded ? (
                 <>
-                {posts.results.length 
-                ? posts.results.map(post => (
-                    <Post key={post.id} {...post} setPosts={setPosts} />
-                ))
-                : <Container className={appStyles.Content}>
+                {posts.results.length
+                ? (
+                    <InfiniteScroll 
+                        children={
+                            posts.results.map(post => (
+                                <Post key={post.id} {...post} setPosts={setPosts} />
+                            ))
+                        }
+                        dataLength={posts.results.length}
+                        loader={<Asset spinner />}
+                        hasMore={!!posts.next}
+                        next={() => fetchMoreData(posts, setPosts)}
+                    />
+                ) : <Container className={appStyles.Content}>
                     <Asset src={NoResults} message={message} />
                 </Container>
                 }
