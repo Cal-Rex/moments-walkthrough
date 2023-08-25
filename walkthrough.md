@@ -3472,5 +3472,269 @@ setResource(prevResource => ({
 
 11. in the `next` prop of the `InfiniteScroll` component, import and add the new `fetchMoreData()` method from `Utils` and pass it `posts` and `setPosts` as its arguments.
 
+________________________________________________________________________________________
 
+## Post Owner Dropdown Menu
+
+- Dropdown Bootstrap component
+    - display the edit and delete options for post owners.
+
+**Important! Check your code!**
+**Once you complete the video, check the code below the video to fix a browser bug.**
+
+Browser Bug Fix:
+> To be sure that the position of the dropdown menu is consistent across browsers, we need to add a popperConfig prop to our Dropdown.Menu component.
+
+> 'popper' is a 3rd party library used by React-Bootstrap. Here we are passing a config object to make sure the dropdown menus position is fixed on all browsers.
+
+Instructions
+> In `MoreDropdown.js,` add the `popperConfig={{ strategy: "fixed" }}` prop to your `Dropdown.Menu` component, like this:
+```jsx
+<Dropdown.Menu
+   className="text-center"
+   popperConfig={{ strategy: "fixed" }}
+>
+```
+
+steps
+1. create a new `MoreDropdown.module.css` file in the `styles` folder
+    - [paste in the code](https://github.com/Code-Institute-Solutions/moments/blob/a63232e8064c2f639daf7b073b9ef22708b1c8c9/src/styles/MoreDropdown.module.css)
+2. create a new `MoreDropdown.js` file in the `components` folder
+    - import the `MoreDropdown.css` `styles` into the new `js` file
+```jsx
+import styles from "../styles/MoreDropdown.module.css"
+```
+
+3. refer to the [reacct bootstrap documentation for code and how to implement the dropwdown menu](https://react-bootstrap-v4.netlify.app/components/dropdowns/#custom-dropdown-components)
+    - copy/paste the [snippet](https://react-bootstrap-v4.netlify.app/components/dropdowns/#custom-dropdown-components) for the dropdown into `MoreDropdown.js`
+
+4. at the top of the file, import:
+    - `React from "react"`
+    - `Dropdown from "react-bootstrap/dropdown"` 
+
+5. amend the first const in the template code from `CustomToggle` to `ThreeDots`
+```jsx
+import styles from "../styles/MoreDropdown.module.css"
+import React from "react";
+import  Dropdown  from "react-bootstrap/Dropdown";
+
+// before
+const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (....
+
+// after
+const ThreeDots = React.forwardRef(({ children, onClick }, ref) => (....
+```
+
+6. inside the `forwardRef` function of `Threedots`, carry out the following
+    - remove the `children` parameter from the function
+    - remove the `href` attribute from the `a`nchor tag inside the function
+```jsx
+const ThreeDots = React.forwardRef(({ children, onClick }, ref) => (
+    <a                 // remove this ^^^^^^^^ 
+      href="" // <------- remove that
+      ref={ref}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick(e);
+      }}
+    >
+      {children}
+      &#x25bc;
+    </a>
+  ));
+```
+
+7. Change the `a` tag to an `i` tag, as this will be changed to a fontawesome icon.
+8. assign a class to the `i` element: `fas fa-ellipsis-v`
+    - close the opening tage and remove everything after
+```jsx
+const ThreeDots = React.forwardRef(({ children, onClick }, ref) => (
+    <i // <--- was "a", now "i"
+      className="fas fa-ellipsis-v"  // <----- new class assigned to
+      href=""                        //        turn this block into
+      ref={ref}                      //        an icon 
+      onClick={(e) => {
+        e.preventDefault();
+        onClick(e);
+      }}
+    /> // <---- closed this tag
+      {children}  // < Delete
+      &#x25bc;   // < These
+    </i>        // < Lines
+```
+
+> Let’s now create the menu for our dropdown, for which the bootstrap default will be enough.  
+
+9. beneath the `ThreeDots` const, create a variable that `exports` `MoreDropdown`, where the variable also contains a function that `return`s the `render` components of the bootstrap boilerplate code provided with the snippet
+    - then, delete everything below the `export`ing function 
+```jsx
+import styles from "../styles/MoreDropdown.module.css"
+import React from "react";
+import  Dropdown  from "react-bootstrap/Dropdown";
+
+const ThreeDots = React.forwardRef(({ children, onClick }, ref) => (
+    <i
+      className="fas fa-ellipsis-v"
+      href=""
+      ref={ref}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick(e);
+      }}
+    />
+  ));
+  
+export const MoreDropdown = () => {
+    return (
+        // code taken from the render in the template code 
+        <Dropdown>
+            <Dropdown.Toggle as={CustomToggle} id="dropdown-custom-components">
+            Custom toggle
+            </Dropdown.Toggle>
+
+            <Dropdown.Menu as={CustomMenu}>
+            <Dropdown.Item eventKey="1">Red</Dropdown.Item>
+            <Dropdown.Item eventKey="2">Blue</Dropdown.Item>
+            <Dropdown.Item eventKey="3" active>
+                Orange
+            </Dropdown.Item>
+            <Dropdown.Item eventKey="1">Red-Orange</Dropdown.Item>
+            </Dropdown.Menu>
+        </Dropdown>
+    )
+}
+// everything after this function is deleted
+```
+
+10. change remaining references of `CustomToggle` in code to `ThreeDots` and remove the `as={CustomMenu}` prop from `Dropdown.Menu`
+```jsx
+import styles from "../styles/MoreDropdown.module.css"
+import React from "react";
+import  Dropdown  from "react-bootstrap/Dropdown";
+
+const ThreeDots = React.forwardRef(({ children, onClick }, ref) => (
+    <i
+      className="fas fa-ellipsis-v"
+      href=""
+      ref={ref}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick(e);
+      }}
+    />
+  ));
+  
+export const MoreDropdown = () => {
+    return (
+        // code taken from the render in the template code 
+        <Dropdown>
+            <Dropdown.Toggle as={ThreeDots} id="dropdown-custom-components">
+            Custom toggle    {/* ^^^^^^^^^ here*/}
+            </Dropdown.Toggle>
+
+            <Dropdown.Menu>
+            <Dropdown.Item eventKey="1">Red</Dropdown.Item>
+            <Dropdown.Item eventKey="2">Blue</Dropdown.Item>
+            <Dropdown.Item eventKey="3" active>
+                Orange
+            </Dropdown.Item>
+            <Dropdown.Item eventKey="1">Red-Orange</Dropdown.Item>
+            </Dropdown.Menu>
+        </Dropdown>
+    )
+}
+// everything after this function is deleted
+```
+
+11. go to `Post.js` in `pages/posts`
+12.  go to the line of code in the `return` statement that checks if a user `is_owner` of a post and if `PostPage` has a value. remove the placeholder text that was put there earlier and replace it with the `MoreDropdown` component
+```jsx
+return <Card className={styles.Post}>
+        <Card.Body>
+            <Media className="align-items-center justify-content-between">
+                <Link to={`/profiles/${profile_id}`}>
+                <Avatar src={profile_image} height={55} />
+                {owner}
+                </Link>
+                <div className='d-flex align-items-center'>
+                    <span>{updated_at}</span>
+                    {is_owner && postPage && <MoreDropdown />} 
+                </div>         {/* added here ^^^^^^^^^^^^ */}
+            </Media>
+```
+
+13. check its working
+    - originally didn't work, had to add a `postPage` prop to the `Post` component in the `PostsPage` render. as this is in `PostPage.`
+    - for reaons why this was needed, jump back to [this subsection in creating the post component fron end](#change-behaviourpermissions-on-post-depending-on-whether-the-owner-is-viewing-it)
+    ```jsx
+    return (
+    <Row className="h-100">
+      <Col className="py-2 p-0 p-lg-2" lg={8}>
+        <p>Popular profiles for mobile</p>
+        <Post {...post.results[0]} setPosts={setPost} postPage /> // <--- new prop added
+        ...
+    ```
+
+14. go back to the `MoreDropdown` component and assign some styling:
+    - add a bootstrap class ot the new icon that pushes it to the right
+    - change its dropdown box orientation to `left` using the `drop` prop
+    - change the `Dropdown.Menu`'s alignment to `text-center` by assigning it a class
+    - remove the `id` from the `Dropdown.Toggle` element, as it is not needed
+    - remove the `"custom toggle"` text inside the `Dropdown.Toggle element`
+    - turn `Dropdown.Toggle` into a self closing element
+    - remove `Dropdown.Item`s 3 and 4
+    - remove the `eventKey` props from the remaining `Dropdown.Items`
+    - assign the class `styles.DropdownItem` to the `DropdownItems`
+    - add a placeholder `onClick={() => {}}` handler to the `Dropdown.Items`
+```jsx
+export const MoreDropdown = () => {
+    return (
+        <Dropdown className="ml-auto" drop="left">
+            <Dropdown.Toggle as={ThreeDots} />
+
+            <Dropdown.Menu className="text-center">
+            <Dropdown.Item className={styles.DropdownItem} onClick={() => {}}></Dropdown.Item>
+            <Dropdown.Item className={styles.DropdownItem} onClick={() => {}}></Dropdown.Item>
+            </Dropdown.Menu>
+        </Dropdown>
+    )
+```
+
+15. now, edit the first `Dropdown.Item` to be the edit post button:
+    - assign it an `aria-label` of "edit"
+    - inside the tags, add a fontawesome icon with the class names: `"fas fa-edit"`
+
+16. edit the second `Dropdown.Item` to be the delete post button:
+    - assign it an `aria-label` of "delete"
+    - inside the tags, add fontawesome icon with the class names: `"fas fa-trash-alt"`
+
+```jsx  
+export const MoreDropdown = () => {
+    return (
+        <Dropdown className="ml-auto" drop="left">
+            <Dropdown.Toggle as={ThreeDots} />
+
+            <Dropdown.Menu className="text-center">
+            <Dropdown.Item 
+              className={styles.DropdownItem}
+              onClick={() => {}}
+              aria-label="edit"
+              >
+                <i className="fas fa-edit" />
+              </Dropdown.Item>
+            <Dropdown.Item
+              className={styles.DropdownItem}
+              onClick={() => {}}
+              aria-label="delete"
+              >
+                <i className="fas fa-trash-alt"/>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+        </Dropdown>
+    )
+}
+```
+
+> Now we are ready to write the logic for what  happens when our users click on the edit or  
+delete icons in our dropdown menu.
 
