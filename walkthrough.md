@@ -187,6 +187,18 @@
 28. [Challenge: The Infinite Scroll for Comment Components](#challenge-the-infinite-scroll-for-comment-components)
     - challenge
 
+## 6. Displaying the Popular Profiles
+
+29. [The PopularProfiles Component - Part 1](#the-popularprofiles-component---part-1)
+    - Video: https://youtu.be/AzYI1Nfw2rU
+    - add basic popular profiles component
+    - refresher on using spinner asset (hasLoaded)
+
+30. [The PopularProfiles Component - Part 2](#the-popularprofiles-component---part-2)
+    - Video: https://youtu.be/Kr6sWXhzF1Q
+    - making the mobile view
+
+
 
 _________________________
 
@@ -4535,3 +4547,247 @@ Comment Infinite Scroll
 **To test your code is working**
 1. important: Before you adjust your code: In your preview, create at least 11 comments under a single post. Notice that while all will show as you create them, when you refresh the page only 10 will display.
 2. Go back to the post you added your comments to. As you scroll down, all the comments you created will appear at the bottom of the page as you scroll.
+
+________________________________________________________________________
+
+## The PopularProfiles Component - Part 1
+
+1. create a `profiles` folder in the `src/pages` folder
+2. inside the new folder, create a `PopularProfiles.js` file
+    - use the `rafce` snippet to set it up
+3. import `appStyles` `from App.module.css`
+```jsx
+import appStyles from '../../App.module.css'
+```
+4. replace the `div` in the return statement with a `Container` component from the `react-bootstrap` library
+    - give it a class of `appStyles.content`
+    - inbetween the `Container` tags, add a placeholder `<p>` with the text `"most followed profiles"`
+```jsx
+import React from 'react'
+import appStyles from '../../App.module.css'
+import { Container } from 'react-bootstrap'
+
+const PopularProfiles = () => {
+  return (
+    <Container className={appStyles.Content}>
+        <p>Most followed profiles</p>
+    </Container>
+  )
+}
+
+export default PopularProfiles
+```
+5. go to `PostsPage.js`
+6. replace the placeholder `<p>` of `"popular profiles for desktop"` with the new `PopularProfiles` component
+```jsx
+<Col md={4} className="d-none d-lg-block p-0 p-lg-2">
+    <PopularProfiles />
+</Col>
+```
+7. Check it works
+
+back in `PopularProfiles.js`:
+8. define a `useState` hook for `profileData`
+    - inside the `useState` method, add the 2 following attributes:
+```jsx
+import React, { useState } from 'react'
+import appStyles from '../../App.module.css'
+import { Container } from 'react-bootstrap'
+
+const PopularProfiles = () => {
+    const [profileData, setProfileData] = useState({
+        // empty results array to store the list of popular
+        // profiles, established as an object inside a KVP 
+        // because there is more than one attribute.
+        popularProfiles: {results: []},
+        // we will use thie pageProfile later!
+        pageProfile: {results: []},
+    });
+  return (
+    <Container className={appStyles.Content}>
+        <p>Most followed profiles</p>
+    </Container>
+  )
+}
+
+export default PopularProfiles
+```
+
+> Now we have our profileData object defined, we’ll need to destructure the popularProfiles attribute from it.
+
+9.  below the `useState` for `profileData`, destructure the state of `profileData` into the `popularProfiles` attribute
+```jsx
+const PopularProfiles = () => {
+    const [profileData, setProfileData] = useState({
+        // we will use thie pageProfile later!
+        pageProfile: {results: []},
+        PopularProfiles: {results: []},
+    });
+    const {PopularProfiles} = profileData;
+```
+> Next we need to fetch our popularProfiles data on mount.
+
+10. beneath the destructured const, add a `useEffect` hook and pass in an `async` `handleMount` function with a `try/catch` block:
+```jsx
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+
+        } catch (err) {
+            console.log(err) 
+        }
+    }
+})
+```
+
+11. inside the `try` block, make a `get` request with the `axiosReq` interceptor, storing the requested data in a destructured `data` variable.
+    - as seen in the path for the request, a django query is being made for profiles, ordered by `followers_count` in reverse order
+    - as this is a mounting function, call the `handleMount` after its been defined, inside the `useEffect hook`
+```jsx
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosReq.get(
+                //profiles (what to query)
+                //   ||  Query
+                //   ||    || order
+                //   ||    ||   ||  "-" to reverse the order
+                //   ||    ||   ||   ||   What to order by
+                //   \/    \/   \/   \/    \/
+                '/profiles/?ordering=-followers_count'
+            )
+        } catch (err) {
+            console.log(err) 
+        }
+    }
+    handleMount();
+})
+```
+
+12. after the `handleMount` function, call the `setProfileData` hook, passing it a callback of `prevState`. Inside it, spread `prevState`
+    - then, update `popularProfiles` with the newly returned `data` from the request
+```jsx
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosReq.get(
+                '/profiles/?ordering=-followers_count'
+            )
+            setProfileData((prevState) => ({
+                ...prevState,
+                PopularProfiles: data,
+            }))
+        } catch (err) {
+            console.log(err) 
+        }
+    }
+```
+> Now the question is, when do we run this effect? Well, every user has to make different requests to follow and unfollow people, so we’ll need to re-fetch `popularProfiles` depending on the state of the current user.
+
+13. above the `useEffect` hook, define a `currentUser` variable and pass it the `useCurrentUser` function. be sure to import it
+```jsx
+const {PopularProfiles} = profileData;
+const currentUser = useCurrentUser();
+
+useEffect(() => {
+```
+
+14. now, set it as the dependency for the `useEffect` hook
+```jsx
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosReq.get(
+                '/profiles/?ordering=-followers_count'
+            )
+            setProfileData((prevState) => ({
+                ...prevState,
+                PopularProfiles: data,
+            }))
+        } catch (err) {
+            console.log(err) 
+        }
+    }
+    handleMount();
+}, [currentUser]);
+```
+> Now that we’re fetching the popular profiles, let’s render them in the browser to check our API request is working.
+
+15. in the return statement, under the paragraph tag, `map` over the `results` in `popularProfiles`, returning a `<p>` tag with `profile`'s `id` as its `key` and the `profile.owner` as its content:
+```jsx
+return (
+    <Container className={appStyles.Content}>
+        <p>Most followed profiles</p>
+        {popularProfiles.results.map((profile) => (
+            <p key={profile.id}>{profile.owner}</p>
+        ))}
+    </Container>
+)
+```
+> now to add a spinner for it loading up
+
+16. set a `hasLoaded` `useState` hook with an initial value of `false`, call the `setHasLoaded` hook in the `handleMount` function right after the `profileData` has been `set` and `set` its value to `true`.
+    - then, outside of the `handleMount` function but still inside `useEffect`, before the `handleMount` is called, `set` `hasLoaded`'s value to false, so that `hasLoaded` is `false` during the retreival of new `data`
+```jsx
+const [hasLoaded, setHasLoaded] = useState(false);
+
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosReq.get(
+                '/profiles/?ordering=-followers_count'
+            )
+            setProfileData((prevState) => ({
+                ...prevState,
+                popularProfiles: data,
+            }))
+            setHasLoaded(true);
+        } catch (err) {
+            console.log(err) 
+        }
+    }
+    setHasLoaded(false);
+    handleMount();
+}, [currentUser]);
+```
+
+17. in the return statement, inside the `Container` tags add a ternary statement that checks the value of `hasLoaded`:
+    - if `hasLoaded` is true, create a jsx fragment, and inside run the `map` function to get the `popularProfiles` previously defined in this section
+    - else, load the `spinner` `Asset`
+```jsx
+return (
+    <Container className={appStyles.Content}>
+        {hasLoaded ? (
+            <>
+            {popularProfiles.results.map((profile) => (
+                <p key={profile.id}>{profile.owner}</p>
+            ))}
+            </>
+        ) : (
+            <Asset spinner />
+        )}
+    </Container>
+)
+```
+
+18. alternatively, this can be done without a `hasLoaded` state, by just checking the `length` of `popularProfiles` in the ternary statement instead of `hasLoaded`:
+```jsx
+return (
+    <Container className={appStyles.Content}>
+        {popularProfiles.results.length ? (
+            <> {/*^^^^^^^^^^^^^^^^^^^^^^^ no need for hasLoaded! */}
+            {popularProfiles.results.map((profile) => (
+                <p key={profile.id}>{profile.owner}</p>
+            ))}
+            </>
+        ) : (
+            <Asset spinner />
+        )}
+    </Container>
+)
+``` 
+__________________________________________________________
+
+## The PopularProfiles Component - Part 2
+
+go to `PostsPage.js`:
+1. 
