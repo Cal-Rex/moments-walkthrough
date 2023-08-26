@@ -177,6 +177,17 @@
 25. [creating the comment components](#creating-the-comment-component)
     - Video: https://youtu.be/lq_2J28BYfg
 
+26. [Comments: The Comment Component Dropdown Menu](#comments-the-comment-component-dropdown-menu)
+    - Video: https://youtu.be/kXyry7d46s4
+    - add dropdown menu for comments and the ability to delete a comment
+
+27. [Comments: The Edit Comment Form](#comments-the-edit-comment-form)
+    - Challenge
+
+28. [Challenge: The Infinite Scroll for Comment Components](#challenge-the-infinite-scroll-for-comment-components)
+    - challenge
+
+
 _________________________
 
 ## Getting set up
@@ -4269,3 +4280,258 @@ export default Comment
 ```
 
 ___________________________________________________________
+
+## Comments: The Comment Component Dropdown Menu#
+
+> Our delete functionality will update the state to change our comments count in the post, and remove the selected comment from the comments array.
+
+in `Comment.js`:
+1. import `useCurrentUser` and apply it to a const of `currentUser`
+2. create a const of `is_owner` that checks if the `username` of the `currentUser` matches the `owner` of the comment (if it has a value)
+```jsx
+import { useCurrentUser } from '../../contexts/CurrentUserContext'
+
+const Comment = ({content, updated_at, owner, profile_id,}) => {
+    const [ownerAvatar, setOwnerAvatar] = useState("")
+    const currentUser = useCurrentUser();
+    const is_owner = currentUser?.username === owner;
+```
+
+3. in the return statement, inside the `Media` tags, but below the `Media.Body` tags, add a double ampersand conditional statement that runs if `is_owner` is true.
+    - if true, the `MoreDropdown` component should appear, it should also be passed `handleEdit`and `handleDelete` props (give placeholder functions for now)
+```jsx
+<Media>
+    <Link to={`/profiles/${profile_id}`}>
+        <Avatar src={ownerAvatar} />
+    </Link>
+    <Media.Body className='align-self-center ml-2'>
+    <Link to={`/profiles/${profile_id}`}>
+        <span className={styles.Owner}>{owner}</span>
+    </Link>
+        <span className={styles.Date}>{updated_at}</span>
+        <p>{content}</p>
+    </Media.Body>
+    {is_owner && ( // if is_owner has a truthy value, add the dropdown 
+        <MoreDropdown handleEdit={() => {}} handleDelete={() => {}} />
+    )}
+</Media>
+```
+> To successfully delete a comment, we’ll have to  decrement the post’s comments_count and filter out the deleted comment from the comments  array from our state. 
+
+> To do that, we’ll need  
+to access both the setPost and setComments functions inside the Comment component.
+
+4. go to `PostPage.js` where the `Comment` component is being rendered
+5. pass it `setPost` and `setComments` as props
+```jsx
+{comments.results.length ? (
+    comments.results.map(comment => (
+        <Comment
+        setPost={setPost} // <--- added
+        setComments={setComments} //  <-- added
+        key={comment.id}
+        {...comment}
+        />
+    ))
+) : currentUser ? (
+<span>No Comments. be the first.</span>
+) : (
+<span>No comments in here D: </span>
+)}
+</Container>
+```
+
+6. back in `Comment.js` add the `setPost` and `setComments` props into the `props` list as well as the comment `id`
+```jsx
+const Comment = ({content, updated_at, owner, 
+    profile_id, id, setPost, setComment}) => {
+```
+
+7. add a new `async` `handleDelete` function with a `try/catch` block that makes an `axiosRes.delete` request to the path of `/comments/${id}/`
+```jsx
+const handleDelete = async () => {
+    try {
+        await axiosRes.delete(`/comments/${id}/`)
+    } catch(err) {
+        console.log(err)
+    }
+}
+```
+
+8. beneath the `axiosRes.delete` request, call the `setPost` function from the passed in props, giving it a callback of `prevPost`
+    - inside it, `spread` the `results` of `prevPost` into the `results` object of the `post` variable in the parent element, and amend the `comments_count` by taking the `prevPost.results[0].comments_count` and decrementing it by `1`
+```jsx
+const handleDelete = async () => {
+    try {
+        await axiosRes.delete(`/comments/${id}/`)
+        setPost(prevPost => ({
+            results: [{
+                ...prevPost.results[0],
+                comments_count: prevPost.results[0].comments_count - 1
+        }]
+        }))
+    } catch(err) {
+        console.log(err)
+    }
+}
+```
+> With the comments count on the post updated, we need to remove the deleted comment from our state.  
+
+9. below the `setPost` function, add the `setComment` function, taking a callback of `prevComments`:
+    - inside, `spread` the `prevComments` variable, and then update the `results` value is a filter of the comments for that post that do not have the id of the deleted post:
+```jsx
+ const handleDelete = async () => {
+    try {
+        await axiosRes.delete(`/comments/${id}/`)
+        setPost(prevPost => ({
+            results: [{
+                ...prevPost.results[0],
+                comments_count: prevPost.results[0].comments_count - 1
+        }]
+        }));
+        setComment(prevComments => ({
+            ...prevComments,
+            results: prevComments.results.filter(
+                (comment) => comment.id !== id
+            )
+        }))
+    } catch(err) {
+        console.log(err)
+    }
+}
+```
+
+10. add the `handleDelete` function to the `handleDelete` prop in `MoreDropdown` in the `return` statement for `Comment.js`
+```jsx
+<Media>
+    <Link to={`/profiles/${profile_id}`}>
+        <Avatar src={ownerAvatar} />
+    </Link>
+    <Media.Body className='align-self-center ml-2'>
+    <Link to={`/profiles/${profile_id}`}>
+        <span className={styles.Owner}>{owner}</span>
+    </Link>
+        <span className={styles.Date}>{updated_at}</span>
+        <p>{content}</p>
+    </Media.Body>
+    {is_owner && (
+        <MoreDropdown handleEdit={() => {}} handleDelete={handleDelete} /> // <-- added
+    )}
+</Media>
+```
+
+11. check it works
+
+_________________________________________________________________________
+
+## Comments: The Edit Comment Form
+
+challenge: [challenge page](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+RA101+2021_T3/courseware/70a8c55db0504bbdb5bcc3bfcf580080/29cd81fee7474552942d4f53a23e6df7/?child=first)
+[source code](https://github.com/mr-fibonacci/moments/tree/8a8de7e0dcb980ed05a4af95770b65744cf810b1)
+
+Your completed form should contain:
+
+- An interactive Comments Icon
+- A Comments Edit Form
+
+**Steps**
+Please follow the steps below to add this component to the project.
+
+**Step 1: Adding your boilerplate:**
+1. Inside the pages/comments directory, create a CommentEditForm.js file.
+2. [Paste in the code for CommentEditForm.js from the source code.](https://github.com/mr-fibonacci/moments/blob/8a8de7e0dcb980ed05a4af95770b65744cf810b1/src/pages/comments/CommentEditForm.js)
+
+
+**Step 2: Adjust the Comment.js code:**
+3. Update the import for react to include the useState hook:
+```jsx
+import React, { useState } from "react";
+```
+
+4. Add the following import:
+```jsx
+import CommentEditForm from "./CommentEditForm";
+```
+
+5. Underneath the destructured props, add the following state to toggle EditForm.
+```jsx
+const [showEditForm, setShowEditForm] = useState(false);
+```
+
+6. Replace the return statement, and its contents, with the following code:
+```jsx
+return (
+    <>
+      <hr />
+      <Media>
+        <Link to={`/profiles/${profile_id}`}>
+          <Avatar src={profile_image} />
+        </Link>
+        <Media.Body className="align-self-center ml-2">
+          <span className={styles.Owner}>{owner}</span>
+          <span className={styles.Date}>{updated_at}</span>
+          {showEditForm ? (
+            <CommentEditForm />
+          ) : (
+            <p>{content}</p>
+          )}
+        </Media.Body>
+        {is_owner && !showEditForm && (
+          <MoreDropdown
+            handleEdit={() => setShowEditForm(true)}
+            handleDelete={handleDelete}
+          />
+        )}
+      </Media>
+    </>
+  );
+```
+
+Note: This code adds a ternary to display the comment edit form component if a user selects the edit option:
+7. Pass the CommentEditForm the following props. The setShowEditForm is a function that will enable a comment owner to toggle the edit form.
+```jsx
+<CommentEditForm
+      id={id}
+      profile_id={profile_id}
+      content={content}
+      profileImage={profile_image}
+      setComments={setComments}
+      setShowEditForm={setShowEditForm}
+    />
+```
+**Step 3: Checking your code is working**
+8. Go to a comment that the currently logged in user owns and click on the Dropdown Menu.
+9. Choose the edit option and the edit form will show up.
+10. If you click cancel, you’ll see the comment again.
+11. If you choose to make an edit and click save, the updated version of that comment will show up.
+12. If you create a comment and click the post button you won’t be able to see your comment yet. But the comment count number will go up here:
+13. Now that your CreateCommentForm is complete, in the next challenge, we’ll add the code to view existing comments under the post.
+
+_______________________________________________________________________
+
+## Challenge: The Infinite Scroll for Comment Components
+
+Project Description
+Once complete, your PostsPage Component should be able to:
+
+- Infinitely Load Comments
+
+**Steps**
+Note: We recommend referring back to the InfiniteScroll code in the PostsPage.js file, when completing this challenge.
+
+Comment Infinite Scroll
+
+1. In PostPage.js (NOT PostsPage.js), inside the ternary that displays the Comments, add an InfiniteScroll component
+2. Move the code you already have to render comments (including the map function) into the InfiniteScroll component’s children prop.
+3. Adjust the following props:
+    - Set the dataLength of the InfiniteScroll component to the length of the comments results array
+    - Set the loader prop to the Asset component, passing the Asset component a spinner prop
+    - Set the hasMore prop to the correct boolean value, based on if the comments object contains a next value or not.
+    - Set the next prop to an arrow function that calls the fetchMoreData function we built in the utils file.
+    - Pass the fetchMoreData function the required arguments to handle fetching more comments
+4. Read the warnings in the terminal, as a reminder to make your imports.
+
+
+**To test your code is working**
+1. important: Before you adjust your code: In your preview, create at least 11 comments under a single post. Notice that while all will show as you create them, when you refresh the page only 10 will display.
+2. Go back to the post you added your comments to. As you scroll down, all the comments you created will appear at the bottom of the page as you scroll.

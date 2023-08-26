@@ -4,10 +4,9 @@ import { useCurrentUser } from '../../contexts/CurrentUserContext'
 import Avatar from '../../components/Avatar'
 import { Card, Media, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { axiosReq, axiosRes } from '../../api/axiosDefaults';
+import { axiosRes } from '../../api/axiosDefaults';
 import { MoreDropdown } from '../../components/MoreDropdown';
 import { useHistory } from 'react-router-dom/cjs/react-router-dom';
-import axios from 'axios';
 
 const Post = (props) => {
   const {

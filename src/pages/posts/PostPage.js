@@ -11,6 +11,9 @@ import Post from "./Post";
 import CommentCreateForm from "../comments/CommentCreateForm";
 import { useCurrentUser } from "../../contexts/CurrentUserContext";
 import Comment from "../comments/Comment";
+import InfiniteScroll from "react-infinite-scroll-component";
+import Asset from "../../components/Asset";
+import { fetchMoreData } from "../../utils/Utils";
 
 function PostPage() {
     const { id } = useParams();
@@ -54,9 +57,23 @@ function PostPage() {
             "Comments"
           ) : null}
           {comments.results.length ? (
-            comments.results.map(comment => (
-              <Comment key={comment.id} {...comment} />
-            ))
+            <InfiniteScroll 
+            children={
+              comments.results.map(comment => (
+                <Comment
+                  setPost={setPost}
+                  setComments={setComments}
+                  key={comment.id}
+                  {...comment}
+                />
+              ))
+            }
+            dataLength={comments.results.length}
+            loader={<Asset spinner />}
+            hasMore={!!comments.next}
+            next={() => fetchMoreData(comments, setComments)}
+        />
+            
           ) : currentUser ? (
             <span>No Comments. be the first.</span>
           ) : (

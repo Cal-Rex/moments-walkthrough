@@ -4,41 +4,81 @@ import { axiosRes } from '../../api/axiosDefaults'
 import { Media } from 'react-bootstrap'
 import { Link } from 'react-router-dom/cjs/react-router-dom'
 import Avatar from '../../components/Avatar'
+import { useCurrentUser } from '../../contexts/CurrentUserContext'
+import { MoreDropdown } from '../../components/MoreDropdown'
+import CommentEditForm from './CommentEditForm'
 
-const Comment = ({content, updated_at, owner, profile_id}) => {
+const Comment = ({content, updated_at, owner, 
+    profile_id, id, setPost, setComments}) => {
     const [ownerAvatar, setOwnerAvatar] = useState("")
+    const [showEditForm, setShowEditForm] = useState(false);
+    const currentUser = useCurrentUser();
+    const is_owner = currentUser?.username === owner;
 
-useEffect(() => {
-    const handleMount = async () => {
+    useEffect(() => {
+        const handleMount = async () => {
+            try {
+                const {data} = await axiosRes.get(`/profiles/${profile_id}`);
+                console.log(data.image)
+                setOwnerAvatar(data.image)
+            } catch (err) {
+                console.log(err)
+            }
+        }
+        handleMount();
+    }, [profile_id]);
+
+    const handleDelete = async () => {
         try {
-            const {data} = await axiosRes.get(`/profiles/${profile_id}`);
-            console.log(data.image)
-            setOwnerAvatar(data.image)
-        } catch (err) {
+            await axiosRes.delete(`/comments/${id}/`)
+            setPost(prevPost => ({
+                results: [{
+                    ...prevPost.results[0],
+                    comments_count: prevPost.results[0].comments_count - 1
+            }]
+            }));
+            setComments(prevComments => ({
+                ...prevComments,
+                results: prevComments.results.filter(
+                    (comment) => comment.id !== id
+                )
+            }))
+        } catch(err) {
             console.log(err)
         }
     }
-    handleMount();
-}, [])
 
-  return (
-    <div>
-        <hr />
-        <Media>
-            <Link to={`/profiles/${profile_id}`}>
-                <Avatar src={ownerAvatar} />
+    return (
+        <>
+          <hr />
+          <Media>
+            <Link to={`/profiles/${profile_id}/`}>
+              <Avatar src={ownerAvatar} />
             </Link>
-            <Media.Body className='align-self-center ml-2'>
-            <Link to={`/profiles/${profile_id}`}>
-                <span className={styles.Owner}>{owner}</span>
-            </Link>
-                <span className={styles.Date}>{updated_at}</span>
+            <Media.Body className="align-self-center ml-2">
+              <span className={styles.Owner}>{owner}</span>
+              <span className={styles.Date}>{updated_at}</span>
+              {showEditForm ? (
+                <CommentEditForm id={id}
+                profile_id={profile_id}
+                content={content}
+                profileImage={ownerAvatar}
+                setComments={setComments}
+                setShowEditForm={setShowEditForm} 
+                />
+              ) : (
                 <p>{content}</p>
+              )}
             </Media.Body>
-        </Media>
-    </div>
-    
-  )
+            {is_owner && !showEditForm && (
+              <MoreDropdown
+                handleEdit={() => setShowEditForm(true)}
+                handleDelete={handleDelete}
+              />
+            )}
+          </Media>
+        </>
+      );
 }
 
 export default Comment
