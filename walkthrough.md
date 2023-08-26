@@ -198,6 +198,13 @@
     - Video: https://youtu.be/Kr6sWXhzF1Q
     - making the mobile view
 
+31. [The Profile Component](#the-profile-component)
+    - Video: https://youtu.be/7qzRUbPU0Rg
+    - add a Profile component to display our users profile avatars,  
+        - link back to their profile page,
+    - a button to follow or unfollow each user.
+
+32. [Challenge: Profile Data Context](#challenge-profile-data-context)
 
 
 _________________________
@@ -4790,4 +4797,297 @@ __________________________________________________________
 ## The PopularProfiles Component - Part 2
 
 go to `PostsPage.js`:
-1. 
+1. replace the `<p>` tage for "popular profiles mobile" with the `PopularProfiles` component, except also pass it a prop of `mobile`
+```jsx
+ return (
+        <Row className="h-100">
+        <Col className="py-2 p-0 p-lg-2" lg={8}>
+            <PopularProfiles mobile />
+            <Form className={styles.SearchBar} onSubmit={(event) => event.preventDefault()}>            
+            <Form.Control
+            ...
+```
+
+2. go to `PopularProfiles.js`. destructure the `mobile` prop in the opening function parameters of the component
+```jsx
+import Asset from '../../components/Asset';
+
+const PopularProfiles = ({ mobile }) => {
+    const [profileData, setProfileData] = useState({
+        ...
+```
+
+> Next, let’s adjust the styling of our container by adding a check if the mobile prop exists,  
+
+3. in the `Container` component inside the return statement, inside the `className` prop, modify the internal string to be a template literal and then add a double ampersand conditional to check id `mobile` is truthy. if it is, pass in additional bootstrap utility styling shown in the example:
+```jsx
+return (                                       // will only load styles if mobile is truthy!
+    <Container className={`${appStyles.Content} ${mobile && 'd-lg-none text-center mb-3'}`}>
+                                    {/* the  bootstrap classes d-lg-none text-center and mb-3
+                            hide the component on large screens and up, and align our text.*/}
+    ...
+```
+> Next, we want to display our popular profiles differently depending on if they are on mobile or desktop.
+
+> On mobile, they’ll display next to each other, and we’ll only show the first 4.
+
+> in desktop view, we’ll display up to 10 profiles, one on top of another.
+
+4. inside the `popularProfiles.results.length` ternary in the return statement, add another ternary statement inside its `<>fragment`. it will check is `mobile` is truthy. 
+    - in the true statement, add a `div` with the classes shown in the example, move the `map` function into the `div`
+        - > as we only have room to display the 4 most popular profiles on the mobile view, so we’ll `slice` the `results` array to get the first 4.
+    - in the else statement, run the `map` function as normal, removing the outer `{}` as they are no longer needed
+```jsx
+<Container className={`${appStyles.Content} ${mobile && 'd-lg-none text-center mb-3'}`}>
+        {popularProfiles.results.length ? (
+            <>
+            {mobile ? (
+                <div className='d-flex justify-content-around'>
+                    {popularProfiles.results.slice(0, 4).map((profile) => (
+                <p key={profile.id}>{profile.owner}</p>
+                ))}
+                </div>
+            ) : (
+                popularProfiles.results.map((profile) => (
+                    <p key={profile.id}>{profile.owner}</p>
+                ))
+            )}
+            </>
+        ) : (
+            <Asset spinner />
+        )}
+</Container>
+```
+____________________________________________________________________
+
+## The Profile Component
+
+- add a Profile component to display our users profile avatars,  
+    - link back to their profile page,
+- [a button to follow or unfollow each user.](#followunfollow-buttons)
+
+start by creating the template css:
+- in the `styles` folder, create the file `Profile.module.css`, [copy/paste the template css](https://github.com/Code-Institute-Solutions/moments/blob/b70c8f1e3b054e35138c26930b7947fe12a20186/src/styles/Profile.module.css)
+
+go to `pages/profiles`. create a `Profile.js` file:
+1. inside, create the structure for the component with the `rafce` snippet
+2. import the Profile.module.css stylesheet that was just created
+3. additionally, import the button styles also
+```jsx
+import React from 'react'
+import styles from '../../styles/Post.module.css'
+import btnStyles from '../../styles/Button.module.css'
+
+const Profile = () => {
+  return (
+    <div>Profile</div>
+  )
+}
+
+export default Profile
+```
+
+4. now, go to `PopularProfiles.js`
+5. replace the placeholder paragraphs in the return statement with the newly created `Profile` component
+    - pass the `Profile` components a key of each `profile`'s `id`
+    - also pass in the `profile` to be used as a prop also
+    - make sure the mobile-relative component has the `mobile` prop passed in too
+```jsx
+return (
+    <Container className={`${appStyles.Content} ${mobile && 'd-lg-none text-center mb-3'}`}>
+        {popularProfiles.results.length ? (
+            <>
+            {mobile ? (
+                <div className='d-flex justify-content-around'>
+                    {popularProfiles.results.slice(0, 4).map((profile) => (
+                <Profile key={profile.id} profile={profile} mobile/>
+                ))} {/* replaced ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^<p> tags*/}
+                </div>
+            ) : (
+                popularProfiles.results.map((profile) => (
+                    <Profile key={profile.id} profile={profile} />
+                )) {/* replaced ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^<p> tags*/}
+            )}
+            </>
+        ) : (
+            <Asset spinner />
+        )}
+    </Container>
+  )
+```
+6. go back to `Profile.js`
+7. in the top function, pass a `props` argument
+8. destructure the passed-in `props` into variables of `profile`, `mobile` and `imageSize=55`
+9. further destructure the `profile` variable into variables of `id`, `following_id`, `image` and `owner`
+> We’ll also need to know if the currently logged in user is the owner of a profile. So, as before,  we’ll auto import and use our useCurrentUser hook,  
+10. create a `currentUser` variable and give it the value of the `useCurrentUser` hook
+11. create an `is_owner` variable and use it to check if the `username` value of `currentUser` matches that of `owner`
+```jsx
+import React from 'react'
+import styles from '../../styles/Post.module.css'
+import btnStyles from '../../styles/Button.module.css'
+import { useCurrentUser } from '../../contexts/CurrentUserContext';
+
+const Profile = (props) => {
+    const { profile, mobile, imageSize=55 } = props;
+    const { id, following_id, image, owner } = profile;
+
+    const currentUser = useCurrentUser();
+    const is_owner = currentUser?.username === owner;
+  return (
+    <div>Profile</div>
+  )
+}
+
+export default Profile
+```
+> Ok, We have all the needed data destructured, so let’s now work on the JSX.  
+
+12. > We’ll give the outer div the bootstrap classes “my-3 d-flex" and "align-items-center” to keep everything nicely aligned and centered In case the user is on a mobile screen, we’ll display content in a column instead.
+```jsx
+return (
+    <div className={`my-3 d-flex align-items-center ${mobile && "flex-column"}`}>Profile</div>
+  )
+```
+
+13. > Next, inside the div we just created, we’ll create another one and inside we’ll auto-import a Link component. We’ll give the Link a bootstrap className of align-self-center. And we’ll set its “to” prop to link to the user’s profile page by including the profile id in the template string.
+    - > Inside the Link, we’ll auto import and add our Avatar component. Its source will be image and height will be set to imageSize.
+```jsx
+return (
+    <div className={`my-3 d-flex align-items-center ${mobile && "flex-column"}`}>
+        <div>
+            <Link className="align-self-center" to={`/profiles/${id}`}>
+                <Avatar src={image} height={imageSize} />
+            </Link>
+        </div>
+    </div>
+)
+```
+> Then, finally below the Link div we’ll  create a div for the profile owner’s name. 
+
+14. > We’ll give it a bit of margin and assign it the WordBreak class, so that the name doesn’t overflow when things get narrow on mobile screens. And we’ll also put our users name in a strong tag.
+```jsx
+return (
+    <div className={`my-3 d-flex align-items-center ${mobile && "flex-column"}`}>
+        <div>
+            <Link className="align-self-center" to={`/profiles/${id}`}>
+                <Avatar src={image} height={imageSize} />
+            </Link>
+        </div>
+        <div className={`mx-2 ${styles.WordBreak}`}>
+            <strong>{owner}</strong>
+        </div>
+    </div>
+)
+```
+
+15. check it all works
+
+### follow/unfollow buttons
+
+> Ok, now let’s work on displaying the follow and unfollow buttons. Similar to the like and unlike buttons, we’ll have to check if the user is logged in and if they're following a profile already.
+
+16. in the return statement in `Profile.js`, under the `div` displaying the `profile.owner`'s username, ass another `div`
+    - > We’ll give that div a className of text-right. In case we’re on desktop, we’ll push the div to the right with the ml-auto class.
+```jsx
+  return (
+    <div className={`my-3 d-flex align-items-center ${mobile && "flex-column"}`}>
+        <div>
+            <Link className="align-self-center" to={`/profiles/${id}`}>
+                <Avatar src={image} height={imageSize} />
+            </Link>
+        </div>
+        <div className={`mx-2 ${styles.WordBreak}`}>
+            <strong>{owner}</strong>
+        </div>
+        <div className={`text-right ${!mobile && 'ml-auto'}`}>
+        </div>
+    </div>
+  )
+```
+> We also only want to show these buttons to users who are logged in. Finally, we don’t want to show a follow button to a user when the profile displayed is their own. So let’s add some logic for these conditions.
+
+17. > Inside the div, we’ll add the not-mobile condition to check if we are on desktop, 
+    - > then we’ll check if the currentUser exists so we know our user is logged in. 
+    - > finally, we’ll also check if the user is not the owner of the profile because our users won’t be able to follow themselves.
+```jsx
+return (
+    <div className={`my-3 d-flex align-items-center ${mobile && "flex-column"}`}>
+        <div>
+            <Link className="align-self-center" to={`/profiles/${id}`}>
+                <Avatar src={image} height={imageSize} />
+            </Link>
+        </div>
+        <div className={`mx-2 ${styles.WordBreak}`}>
+            <strong>{owner}</strong>
+        </div>
+        <div className={`text-right ${!mobile && 'ml-auto'}`}>
+            {!mobile && currentUser && !is_owner}
+        </div>
+    </div>
+)
+```
+
+18. > if the logged in user has followed the profile, then a following_id prop from our API response won’t be null, so we can use this in a ternary:
+    - dont forget to import `Button` from react-bootstrap
+    - > The unfollow button will have classNames of btnStyles.Button and btnStyles.BlackOutline. 
+    - The follow button will have classNames of btnStyles.Button and btnStyles.Black. 
+    - give both `Buttons` a placeholder `onClick` attribute for now
+```jsx
+<div className={`text-right ${!mobile && 'ml-auto'}`}>
+    {!mobile && currentUser && !is_owner && (
+        following_id ? (
+            <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+            onClick={() => {}}>Unfollow</Button>
+        ) : (
+            <Button className={`${btnStyles.Button} ${btnStyles.Black}`} 
+            onClick={() => {}}>Follow</Button>
+    ))}
+</div>
+```
+
+19. check it all works
+
+_______________________________________________________________________
+
+## Challenge: Profile Data ContextProfile Data Context
+In this challenge, we’ll create the Context.Provider for our profileData so that it is more accessible throughout the app.
+
+At the moment each of the `PopularProfiles` components makes its own API request, and contains its own version of the profiles state. Given that we need to access profile data in several places around our application, it would make sense for all our profile data to be in sync across all the components that need to access it. So in order to have one source of truth for our profile data state, we should move it into a context provider.
+
+Project Description
+Once complete, you should be able to:
+- Access the Profile Data from anywhere in the application using a Context.Provider.
+
+Note: Upon completion of this task, your website will look the same but you will now be able to access the Profile Data from any component.
+
+Steps
+Note: We recommend referring back to the ContextUserContext.js file, when completing this challenge.
+
+**Part 1: ProfileDataContext.js**
+1. Inside the context folder, create the ProfileDataContext.js.
+2. Create 2 context objects:
+    - One for profileData, e.g. ProfileDataContext
+    - One for the functions to update it e.g. SetProfileDataContext
+3. Create two custom hooks for each context object above:
+    - e.g. useProfileData
+    - e.g. useSetProfileData
+4. Export and define a ProfileDataProvider function component. Pass it children as props.
+5. Identify and copy all the stateful logic from PopularProfiles.js.
+6. Paste this code into the empty ProfileDataProvider.
+7. Remove the destructured popularProfiles line.
+    - Note: We won’t use the destructured popularProfiles because, eventually, we’ll pass the entire profileData object as the value prop in the ProfileDataContext.Provider. But we’ll need the useState and useEffect hooks here, so that the data is fetched on mount.
+8. In the return statement:
+    - Add your ProfileDataContext.Provider and expose the profileData value.
+    - Add your SetProfileDataContext.Provider and expose the setProfileData value.
+
+**Part 2: Index.js**
+Note: Your ProfileDataProvider will need to be placed within the CurrentUserProvider, as the ProfileDataProvider needs to access the setCurrentUser Context.
+
+9. Add your newly created ProfileDataProvider around the App component (within the CurrentUserProvider).
+
+**Part 3: PopularProfiles.js**
+1. Replace the code you copied from Popular Profiles, and call your new useProfileData context to destructure your popularProfiles state.
+
+**Important:** Don't forget to tidy up your imports e.g. adding new imports, removing unused imports, making sure file paths are accurate.
+
