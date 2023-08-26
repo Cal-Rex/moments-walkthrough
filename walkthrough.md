@@ -157,6 +157,19 @@
     - Video: https://youtu.be/fNZ0hlutv-U
     - how to implement infinite scroll
 
+## 5. The Post Page 
+
+21. [Post Owner Dropdown Menu](#post-owner-dropdown-menu)
+    - Video: https://youtu.be/zedFjNOxaIA
+    - Dropdown Bootstrap component
+    - display the edit and delete options for post owners.
+    - make the delete function work
+    - make the edit button link to the edit page
+        - (but not build it)
+    - Bugfix with the popper library
+
+22. [Create the edit post form](#creating-the-edit-post-form)
+    - Video: https://youtu.be/7JaUL39mot0
 _________________________
 
 ## Getting set up
@@ -3478,6 +3491,9 @@ ________________________________________________________________________________
 
 - Dropdown Bootstrap component
     - display the edit and delete options for post owners.
+    - make the delete function work
+    - make the edit button link to the edit page
+        - (but not build it)
 
 **Important! Check your code!**
 **Once you complete the video, check the code below the video to fix a browser bug.**
@@ -3735,6 +3751,113 @@ export const MoreDropdown = () => {
 }
 ```
 
-> Now we are ready to write the logic for what  happens when our users click on the edit or  
+> Now we are ready to write the logic for what happens when our users click on the edit or  
 delete icons in our dropdown menu.
 
+> When the user clicks the edit button, we want to redirect them to a new url, which will eventually contain a PostEditForm  component. We haven’t created that component  
+
+### creating the link to edit posts page
+
+in `Post`.js
+17. create a `history` variable using a `useHistory` hook
+```jsx
+    const currentUser = useCurrentUser();
+    const is_owner = currentUser?.username === owner
+    const history = useHistory(); // <---new hook
+```
+
+18. create a `handleEdit` function that calls the `history` hook and `push`es a new path of `'/posts/${id}/edit'`
+```jsx
+  const history = useHistory();
+
+    const handleEdit = () => { // new function, cstored in a const so it can be used
+        history.push(`/posts/${id}/edit`)  // as a prop in the MoreDropdown component
+    }
+```
+
+19. scroll down to the `MoreDropdown` component and add the new `handleEdit` function as a prop
+```jsx
+return <Card className={styles.Post}>
+        <Card.Body>
+            <Media className="align-items-center justify-content-between">
+                <Link to={`/profiles/${profile_id}`}>
+                <Avatar src={profile_image} height={55} />
+                {owner}
+                </Link>
+                <div className='d-flex align-items-center'>
+                    <span>{updated_at}</span>  {/* added here below \/\/\/\/\/\/\/ */}
+                    {is_owner && postPage && <MoreDropdown handleEdit={handleEdit}/>}
+```
+### creating the delete posts function/button
+
+20. go into `MoreDropdown`.js and add the `handleEdit` function as the value of the `onClick` attribute for the edit icon not forgetting to pass `handleEdit` as a prop inside `MoreDropdown as well`:
+```jsx
+export const MoreDropdown = ({handleEdit}) => {
+    return (// added as a prop^^^^^^^^^^
+        <Dropdown className="ml-auto" drop="left">
+            <Dropdown.Toggle as={ThreeDots} />
+
+            <Dropdown.Menu className="text-center">
+            <Dropdown.Item 
+              className={styles.DropdownItem}
+              onClick={handleEdit} // <--- passed to the onClick attribute
+              aria-label="edit"
+              >
+```
+
+21. now create a delete function, in `Post.js`:
+    - create a `handleDelete` `async` function as a const.
+    - inside it, make an `axiosRes` `delete` request to `/posts/{$id}/`
+    - call the `history` hook to `goBack()`
+    - make sure to nest it al in a try/catch block to catch and log errors
+    - once created, pass it as a prop to the `MoreDropdown` component:
+```jsx
+// establish the function
+const handleDelete = async () => {
+        try {
+            await axiosRes.delete(`/posts/${id}/`); // request deletion in db
+            history.goBack() // send user back to previous path if successful
+        } catch(err) { //catch errors and log them
+            console.log(err)
+        }
+        
+    }
+
+... // then, down in the render method:
+
+<Media className="align-items-center justify-content-between">
+                <Link to={`/profiles/${profile_id}`}>
+                <Avatar src={profile_image} height={55} />
+                {owner}
+                </Link>
+                <div className='d-flex align-items-center'>
+                    <span>{updated_at}</span>
+                    {is_owner && postPage && <MoreDropdown 
+                    handleEdit={handleEdit} 
+                    handleDelete={handleDelete} />}
+                {/* add as a prop ^^^^^^^^^^^^ */}
+```
+
+22. go to `MoreDropdown.js` and pass the `handleDelete` prop into the component, then:
+    - add the component to the `onClick` handler for the delete icon:
+```jsx
+export const MoreDropdown = ({handleEdit, handleDelete}) => {
+    return ( {/* passed in as a prop here ^^^^^^^^^^^^ */}
+        <Dropdown className="ml-auto" drop="left">
+            <Dropdown.Toggle as={ThreeDots} />
+            ...
+                <i className="fas fa-edit" />
+              </Dropdown.Item>
+            <Dropdown.Item
+              className={styles.DropdownItem}
+              onClick={handleDelete} // <--- added as attribute here
+              aria-label="delete"
+              >
+                <i className="fas fa-trash-alt"/>
+              </Dropdown.Item>
+```
+
+23. check it works
+_____________________________________________________
+
+## creating the Edit Post form
