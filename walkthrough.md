@@ -170,6 +170,13 @@
 
 22. [Create the edit post form](#creating-the-edit-post-form)
     - Video: https://youtu.be/7JaUL39mot0
+
+24. [creating the comment form](#creating-the-comment-form)
+    - step by step walkthrough with templates to create comment form.
+
+25. [creating the comment components](#creating-the-comment-component)
+    - Video: https://youtu.be/lq_2J28BYfg
+
 _________________________
 
 ## Getting set up
@@ -3861,3 +3868,404 @@ export const MoreDropdown = ({handleEdit, handleDelete}) => {
 _____________________________________________________
 
 ## creating the Edit Post form
+
+- make pre-filled forms
+- make form that updates existing record in database
+
+in the `posts` folder create a new file called `PostEditForm.js`
+1. copy all of the code from `PostCreateForm` component into the new `PostEditForm.js` file
+2. change the component name in the file to `PostEditForm`
+3. change the export name to `PostEditForm`
+```jsx
+import Alert from "react-bootstrap/Alert";
+//update component name at top of file
+function PostEditForm() {
+
+  const [errors, setErrors] = useState({});
+...
+// update export name at bottom of file
+export default PostEditForm;
+```
+
+4. create a `Route` for the new component in `App.js`
+```jsx
+<Route exact path="/posts/create" render={() => <PostCreateForm />} />
+<Route exact path="/posts/:id" render={() => <PostPage />} />
+<Route exact path="/posts/:id/edit" render={() => <PostEditForm />} />
+// ^^^^^^^^^^^^^^^^^^^^^^^ new route ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
+
+back in `PostEditForm.js`:
+5. to get the `id` of the post that is to be edited, use the `useParams` hook from the `react-router` library. import this at the top of the file.
+
+6. destructure the `id` fromt he url witht he `useParams` hook
+```jsx
+const imageInput = useRef(null)
+const history = useHistory()
+const {id} = useParams(); // <--- destructured into a const
+```
+
+7. create a `useEffect` hook that houses an `async` `handleMount` function. inside that, house a `try/catch` block:
+```jsx
+// below the newly defined {id} const
+
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+
+        } catch (err) {
+            
+        }
+    }
+})
+```
+
+8. destructure an `axiosReq.get` request to `/posts/${id}/` into a `data` variable.
+9. then, further destructure the data in post to contain the following objects:
+    - `title`, `content`, `image` and `is_owner`
+```jsx
+ useEffect(() => {
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosReq.get(`/posts/${id}`)
+            const {title, content, image, is_owner} = data;
+        } catch (err) {
+            
+        }
+    }
+  })
+```
+> Now, if the logged in user is not the owner of the post, they won’t be able to edit it, and the code in our API application would simply  
+refuse to update it when the user tries to submit the form. However, a better user experience, and a more  secure looking website, would only allow the post owner to access the edit post page in the first place, and would redirect any other users away. 
+
+> So we can add this functionality with a quick ternary that checks if the user is the post owner. If so, the postData will be  updated with the data destructured above so that the input fields can be populated on mount. In the second part of our ternary, if the user isn’t the post owner, we’ll send them back to the home page of our website instead.
+
+10. add a ternary condition to the `try` block that checks if `is_owner` is `True`, if it is, pusht the destructured `title`, `content` and `image` data into the `postData` state of the page using the `setPostData` useSate hook. otherwise, use the `history` hook to redirect them to the home page.
+```jsx
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosReq.get(`/posts/${id}`)
+            const {title, content, image, is_owner} = data;
+{/* --> */} is_owner ? setPostData({title, content, image}) : history.push('/')
+        } catch (err) {
+            console.log(err)
+        }
+    }
+})
+```
+
+11. call the `handleMount` function in the `useEffect` hook and also set a dependency array for the `useEffect hook`. the edit form should update whenever the post `id` in the url changes, or when the `history` changes.
+```jsx
+useEffect(() => {
+    const handleMount = async () => // <--- function workings established
+        try {
+            const {data} = await axiosReq.get(`/posts/${id}`)
+            const {title, content, image, is_owner} = data;
+            is_owner ? setPostData({title, content, image}) : history.push('/')
+        } catch (err) {console.log(err)}
+    }
+    handleMount(); // <--- call the function when the UseEffect hook it run
+}, [hiistory, id]) // <---- define when it runs ()
+```
+> before we can update our post, we need to make some changes to the handleSubmit function.Firstly, we need to make an adjustment to where  we set a value for the image to send to the API. 
+
+12. in the `handleSubmit` function, take the `formData.append` method that handles the uploading of an image and nest it in an `if` statement
+    - allow the method to only run if the `ImageInput` has a value, and if the `current` version of the `ImageInput` state has a value
+```jsx
+const handleSubmit = async (event) => {
+    event.preventDefault()
+    const formData = new FormData();
+
+    formData.append('title', title)
+    formData.append('content', content)
+    // new conditional statement here
+    if (imageInput?.current?.files[0]) {
+        formData.append('image', imageInput.current.files[0])
+    }
+    ...
+```
+
+13.  next, in the `try` block of the `handleSubmit` function, change the `axiosReq.post` request to an `axiosReq.put` request and pass the post `id` into the api request path string so the correct post is updated.
+    - also, amend the `history.push` to redirect users to the newly updated post
+    - data also doesnt need to be stored from the request thats made, so the const that destructures the `axiosReq` can be removed
+```jsx
+const handleSubmit = async (event) => {
+    ...
+    try {            // `put` not `post` \/
+{/*no more const here */} await axiosReq.put(`/posts/${id}`, formData);
+        history.push(`/posts/${id}`) // <--- amended to not need `data` const
+    } catch(err){
+        console.log(err)
+        if (err.response?.status !== 401){
+            setErrors(err.response?.data)
+        }
+    }
+  }
+```
+
+14. check it works
+    - my code kept throwing an error whenever a put requestw as made after the image loaded. got the error of:
+        - cannot read properties of undefined
+        - according to google:
+        > The “cannot read property of undefined” error can occur when you are trying to access a variable or a property that has not been declared yet. This error can also happen if you try to access an implicit template that has not been loaded yet.
+        - couldnt find what was wrong after comparing code in difechecker so updated code with [source code from walkthrough](https://github.com/Code-Institute-Solutions/moments/blob/e5d1038cd440aa0b8fd0fd9ff74af4a1e3fa5f39/src/pages/posts/PostEditForm.js)
+
+15. cleaup the code.
+    - didnt have to do this because of copy pasting source code, but remove the ternary statement that handles the `upload image` image if no image is currently in place in the form 
+    - remove the imports for the `Upload` and `Asset` component as they are no longer needed.
+
+_______________________________________________________________________________
+
+## Creating the Comment Form
+
+this was a challenge page, [view the challenge here](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+RA101+2021_T3/courseware/70a8c55db0504bbdb5bcc3bfcf580080/29cd81fee7474552942d4f53a23e6df7/?child=first)
+
+Your completed form should contain:
+
+- A Comments Text Field
+- An interactive Comments Icon
+
+**Steps**
+Please follow the steps below to add this component to the project.
+
+**Step 1: Adding your boilerplate:**
+1. Inside the styles directory, create a CommentCreateEditForm.module.css file
+2. [Paste in the code for CommentCreateEditForm.module.css from the source code](https://github.com/mr-fibonacci/moments/blob/09254af91d92105468266c3e7691158054284168/src/styles/CommentCreateEditForm.module.css)
+3. Create a comments directory inside your src/pages directory
+4. Inside the comments directory create a CommentCreateForm.js file
+5. [Paste in the code for CommentCreateForm.js from the source code](https://github.com/mr-fibonacci/moments/blob/09254af91d92105468266c3e7691158054284168/src/pages/comments/CommentCreateForm.js)
+
+**Step 2: Making adjustments to PostPage.js (NOT PostsPage.js):**
+1. Add the following imports:
+    - `import CommentCreateForm from "../comments/CommentCreateForm";`
+    - `import { useCurrentUser } from "../../contexts/CurrentUserContext";`
+
+2. Inside the PostPage.js (NOT PostsPage.js) component, above the useEffect function, declare the following variables:
+```jsx
+const currentUser = useCurrentUser();
+const profile_image = currentUser?.profile_image;
+const [comments, setComments] = useState({ results: [] });
+```
+
+3. inside the Container component, delete the placeholder “comments” text add the following code in its place:
+```jsx
+{currentUser ? (
+  <CommentCreateForm
+  profile_id={currentUser.profile_id}
+  profileImage={profile_image}
+  post={id}
+  setPost={setPost}
+  setComments={setComments}
+/>
+) : comments.results.length ? (
+  "Comments"
+) : null}
+```
+
+**Step 3: Checking your code is working**
+1. Run your preview and log in
+2. Click on any post to visit its individual PostPage
+3. see if the comment form shows up
+4. log out and see if it still shows up, (it shouldnt')
+5. If you create a comment and click the post button you won’t be able to see your comment yet. But the comment count number will go up on the post's card
+
+_______________________________________________________________________
+
+## creating the comment component
+
+> Before we can get working on the Comment component to display our comments, we’ll need to fetch them from our API first.
+
+> When we created our PostPage.js file, we said that we would be making 2 API requests inside our `Promise.all` here. At the moment we have one request for the specific post we want to show, and now we are going to add a second request to get the comments our users have made about this post.
+
+go to `PostPage.js`
+1. inside the `handleMount` `try` block, add another `axiosReq.get` request, this time from the path `/comments/?post=${id}`
+    - the path is (?) querying the db for comments that have a `post` value the same as the passed in `id`, as the database stores the related post's id as a ForeignKey rememebr.
+```jsx
+useEffect(() => {
+        const handleMount = async () => {
+            try {
+                const [{data: post}] = await Promise.all([
+                    axiosReq.get(`/posts/${id}`), // <-- dont forget to comma,
+{/* new request>*/} axiosReq.get(`/comments/?post=${id}`),
+                ])
+                setPost({results: [post]})
+                console.log(post)
+            } catch(err) {
+                console.log(err)
+            }
+        }
+        handleMount()
+    }, [id])
+```
+> Now, we can destructure the data from the 2nd API request up here next to the data we got about the post. This time we’ll rename the data to comments.
+
+2. add a second destructured kvp to the `Promise` in the try blocl. it should be a key of `data` with a value of `comments`
+```jsx
+try { // New object added here \/\/\/\/\/
+    const [{data: post}, {data: comments}] = await Promise.all([
+        axiosReq.get(`/posts/${id}`),
+        axiosReq.get(`/comments/?post=${id}`),
+    ])
+    setPost({results: [post]})
+    console.log(post)
+}
+```
+
+3. still inside the `try`, below the `setPost` function, update the `comments` state by using the `setComments` hook
+```jsx
+try {
+    const [{data: post}, {data: comments}] = await Promise.all([
+        axiosReq.get(`/posts/${id}`),
+        axiosReq.get(`/comments/?post=${id}`),
+    ])
+    setPost({results: [post]})
+    setComments(comments) // <-- new state
+```
+
+> let’s render our comments as paragraphs  for now to check if it’s working.
+
+4. in the return statement, below the ternary that displays the create comment form to logged in users, create a new ternary that checks if the `comments.results.length` has value:
+    - add an else/if condition to check if the user is logged in, if they are, pass a string that invites them to make a comment
+    - add the final else statement that just says that theres no comments
+```jsx
+<Container className={appStyles.Content}>
+          {currentUser ? (
+            <CommentCreateForm
+            profile_id={currentUser.profile_id}
+            profileImage={profile_image}
+            post={id}
+            setPost={setPost}
+            setComments={setComments}
+          />
+          ) : comments.results.length ? (
+            "Comments"
+          ) : null}
+          {/* new conditional statement below*/}
+          {comments.results.length ? (
+            'comments will go here'
+          ) : currentUser ? (
+            <span>No comments. be the first.</span>
+          ) : (
+            <span>No comments in here D: </span>
+          )}
+        </Container>
+```
+
+5. check it works
+
+6. go back to the true statement for the `comments.results.length` ternary. inside it, `map` the `comments.results` where for each `comment`:
+    - return a paragraph tag appended with the comment's `id` as a `key`
+    - inside the `<p>` tags, display the `comment.owner`'s username and the `content` of the `comment` they made
+```jsx
+{comments.results.length ? (
+    comments.results.map(comment => (
+        <p key={comment.id}>
+        {comment.owner}: {comment.content}
+        </p>
+    ))
+) : currentUser ? (
+<span>No Comments. be the first.</span>
+) : (
+<span>No comments in here D: </span>
+)}
+```
+
+7. check it works
+
+> Now that we know our API request is working, let’s give our comments some style and display our users' avatars.
+
+8. create a `Comment.module.css` file in the `styles` folder
+    - [copy in the template code](https://github.com/Code-Institute-Solutions/moments/blob/3ece719745e185c970e4e62fd678c7c4765bf801/src/styles/Comment.module.css)
+
+9. in the `comments` folder, create a new file called `Comment.js`
+    - use the `rafce` snippe tto set it up
+    - import the newly created css file from above
+```jsx
+import React from 'react'
+import styles from '../../styles/Comment.module.css'
+
+const Comment = () => {
+  return (
+    <div>Comment</div>
+  )
+}
+
+export default Comment
+```
+
+10. go back to `PostPage.js`, remove the placeholder paragraph for comments, and add the `Comment` component just created, making sure to add the `key` prop to it that used to be in the `<p>` tag.
+    - additionally, `spread` the `comment` callback variable from the map function in as a prop too
+```jsx
+{comments.results.length ? (
+    comments.results.map(comment => (
+        // make sure to import Comment at the top of the file too
+       <Comment key={comment.id} {...comment} />
+       console.log(comment);
+       // callback comment spread ^^^^^^^^^^ into the component
+    ))
+) : currentUser ? (
+<span>No Comments. be the first.</span>
+) : (
+<span>No comments in here D: </span>
+)}
+```
+
+11. back in `Comment.js`
+    - because i didnt make a field in the api to log a comment owner's profile image, i made a manual get request
+        - create a `useState` hook with an empty string as its value for `ownerAvatar` 
+        - create an async `handleMount` `useEffect` hook
+        - inside the `handleMount` function, make an `axiosRes.get` request to the API at the path `/profiles/${profile_id}` to get the profile of the comment owner and put it in a `data` variable
+        -  interrogate the new `data` variable for the right field, in this case, it was `image` (can be done by logging the object to the console and seeing whats in it)
+        - `set` the state of `ownerAvatar` to the retrieved string/url value of `data.image` 
+        - make sure to give the `useEffect` hook an empty array as a dependency to avoid an infinite loop
+    - import the `Avatar` component
+    - take the destructured passed in props and the `ownerAvatar` prop and style a comment
+```jsx
+import React, { useEffect, useState } from 'react'
+import styles from '../../styles/Comment.module.css'
+import { axiosRes } from '../../api/axiosDefaults'
+import { Media } from 'react-bootstrap'
+import { Link } from 'react-router-dom/cjs/react-router-dom'
+import Avatar from '../../components/Avatar'
+
+const Comment = ({content, updated_at, owner, profile_id}) => {
+    const [ownerAvatar, setOwnerAvatar] = useState("")
+
+useEffect(() => {
+    const handleMount = async () => {
+        try {
+            const {data} = await axiosRes.get(`/profiles/${profile_id}`);
+            console.log(data.image)
+            setOwnerAvatar(data.image)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+    handleMount();
+}, [])
+
+  return (
+    <div>
+        <hr />
+        <Media>
+            <Link to={`/profiles/${profile_id}`}>
+                <Avatar src={ownerAvatar} />
+            </Link>
+            <Media.Body className='align-self-center ml-2'>
+            <Link to={`/profiles/${profile_id}`}>
+                <span className={styles.Owner}>{owner}</span>
+            </Link>
+                <span className={styles.Date}>{updated_at}</span>
+                <p>{content}</p>
+            </Media.Body>
+        </Media>
+    </div>
+    
+  )
+}
+
+export default Comment
+```
+
+___________________________________________________________
