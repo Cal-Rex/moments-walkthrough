@@ -212,6 +212,7 @@
     - Video: https://youtu.be/qwGgQoVb5IM
 
 34. [Challenge: Displaying the Posts for a Profile](#challenge-displaying-the-posts-for-a-profile)
+    - [solution code](#displaying-the-posts-for-a-profile-solution-code)
 
 _________________________
 
@@ -5360,3 +5361,44 @@ const mainProfile = (
 _______________________________________________________________________________
 
 ## Challenge: Displaying the Posts for a Profile
+
+
+**Project Description**
+In this challenge, you’ll add the posts by a profile owner in the profile page, underneath the profile header.
+
+Before you adjust your code: In your preview, make sure you have a user who has created at least 11 posts, you can see how many posts a user has in the header here.
+
+Note: We recommend referring back to the InfiniteScroll code in the PostsPage.js file, when completing this challenge.
+
+**Steps**
+In ProfilePage.js:
+
+**Part 1: ProfilePage.js**
+1. Define profilePosts and setProfilePosts with the useState hook. Set the initial state to be an object with an empty results array.
+2. Inside the Promise.all add a second API request to fetch the profilePosts, don’t forget to use the axiosReq instance and the following api endpoint: `/posts/?owner__profile=${id}`
+3. Destructure the returned data property from the API, and rename it to profilePosts.
+4. Call the setProfilePosts function, and pass it the updated profilePosts state. (Add this just before setHasLoaded(true)!)
+
+**Part 2: ProfilePage.js**
+5. Inside the mainProfilePosts variable, under the second <hr/> tag, create a ternary statement that checks that the profilePosts results array is not empty.
+6. If the array is not empty, add an InfiniteScroll component, if it is empty add an Asset component.
+7. Add the following props to the InfiniteScroll component:
+    1. Set the children prop to display all Posts stored in the profilePosts results array. Pass it all the appropriate props
+    2. Set the dataLength of the InfiniteScroll component to the appropriate length
+    3. Use the loader prop to display a spinner.
+    4. Set the hasMore prop to the correct boolean value.
+    5. Set the next prop to an arrow function that calls the fetchMoreData function we built in the utils file.
+    6. Pass the fetchMoreData function the required arguments to handle fetching more profilePosts
+8. In case the posts have been fetched and the results array is still empty, give your Asset component a src attribute with its value being the imported "NoResults" graphic (you will need to import this, just like in PostsPage.js)
+9. Pass your Asset component the following message prop: `No results found, ${profile?.owner} hasn't posted yet.`
+10. Update the “Profile owner's posts” paragraph at the top of the mainProfilePosts varaible, by replacing the text "Profile owner" with the profile owner’s name.
+
+**To test your code is working**
+- Go to a profile with at least 11 posts and scroll to see that all the posts are loaded.
+- Go to a profile that hasn’t created any posts yet and check to see the no results image and message
+- Check that the correct users name is displayed in the profile
+
+#### [Displaying the Posts for a Profile: solution code](https://github.com/mr-fibonacci/moments/blob/83234283da32adb4a6bf5d5053a6c80068f6391c/src/pages/profiles/ProfilePage.js)
+
+________________________________________________________________________
+
