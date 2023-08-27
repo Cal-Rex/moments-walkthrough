@@ -206,6 +206,12 @@
 
 32. [Challenge: Profile Data Context](#challenge-profile-data-context)
 
+## 7. The Profile Page
+
+33. [Building the Profile Header](#building-the-profile-header)
+    - Video: https://youtu.be/qwGgQoVb5IM
+
+34. [Challenge: Displaying the Posts for a Profile](#challenge-displaying-the-posts-for-a-profile)
 
 _________________________
 
@@ -4987,7 +4993,7 @@ return (
 
 > Ok, now let’s work on displaying the follow and unfollow buttons. Similar to the like and unlike buttons, we’ll have to check if the user is logged in and if they're following a profile already.
 
-16. in the return statement in `Profile.js`, under the `div` displaying the `profile.owner`'s username, ass another `div`
+16. in the return statement in `Profile.js`, under the `div` displaying the `profile.owner`'s username, add another `div`
     - > We’ll give that div a className of text-right. In case we’re on desktop, we’ll push the div to the right with the ml-auto class.
 ```jsx
   return (
@@ -5000,7 +5006,8 @@ return (
         <div className={`mx-2 ${styles.WordBreak}`}>
             <strong>{owner}</strong>
         </div>
-        <div className={`text-right ${!mobile && 'ml-auto'}`}>
+        <div className={`text-right ${!mobile && 'ml-auto'}`}> 
+        {/* this is the div */}
         </div>
     </div>
   )
@@ -5093,3 +5100,263 @@ Note: Your ProfileDataProvider will need to be placed within the CurrentUserProv
 
 **Important:** Don't forget to tidy up your imports e.g. adding new imports, removing unused imports, making sure file paths are accurate.
 
+_______________________________________________________________________________
+
+## Building the Profile Header
+
+- populating the profile page
+- Follow/unfollow button logic
+
+setting up:
+- create a new `ProfilePage.module.css` file in the styles directory
+- [import the styles needed from the source code provided](https://github.com/Code-Institute-Solutions/moments/blob/e9b5a7ea53ba032c0eccc269bf55cdbe69c80c46/src/styles/ProfilePage.module.css)
+- add a new `ProfilePage.js` file to the profiles directory
+- [add the template code for the file provided for the tutorial](https://github.com/Code-Institute-Solutions/moments-starter-code/blob/master/23-starter-code/ProfilePage.js)
+- add a `Route` for the new `ProfilePage` component in `App.js`
+```jsx
+    <Route exact path="/profiles/:id" render={() => <ProfilePage />} />
+```
+
+> Ok, our first step will be to fetch the data about the chosen profile to display in the header.
+
+in `ProfilePage.js`
+1. create a const that destructures the the `useParams()` hook into a variable of `id`
+    - > To know which profile to fetch, we’ll need to extract the id from the URL by auto-importing the useParams hook, just like we did for the PostPage and PostEditForm components.
+    -`useParams` can pull id and data from urls/paths
+```jsx
+function ProfilePage() {
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const currentUser = useCurrentUser();
+  const {id} = useParams();
+```
+
+> We can now move onto the useEffect hook. Inside, we’ll define the fetchData async function.
+
+2. create 2 variables:
+    - a const that takes the `useProfileData` hook and destructures its result into a variable called `{pageProfile}`
+    - a const that destructures the value of `pageProfile.results` into an array value of `[profile]`.The value for this variable is determined by the `useEffect` hook in the next step
+```jsx
+function ProfilePage() {
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const currentUser = useCurrentUser();
+  const {id} = useParams();
+  const { pageProfile } = useProfileData();
+  const [profile] = pageProfile.results;
+  const setProfileData = useSetProfileData();
+  ...
+```
+
+3. inside the `useEffect` hook, define an async function called `fetchData`. inside it, put a `try/catch` block whish will `await` a `Promise` and then pass it into a `data` variable, which will in turn destructure it into a `pageProfile` variable:
+```jsx
+ useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const [{data: pageProfile}] = await Promise.all()
+        } catch (err) {
+            console.log(err)
+        }
+    }
+      setHasLoaded(true);
+  }, [])
+```
+> Here, we’ll be fetching the user profile and their posts in a later unit. So, in the array we’ll make the request to the /profiles/:id/ endpoint with the auto-imported axiosReq instance.
+
+4. inside the `all` method of the `Promise` make an `axiosReq.get` request to `/profiles/${id}/`, inside an array - as it will be returned to an array value in the destructure.
+```jsx
+try {
+    const [{data: pageProfile}] = await Promise.all([
+        axiosReq.get(`/profiles/${id}/`)
+    ])
+} catch (err) {
+    console.log(err)
+}
+```
+> If everything goes well, we’ll need to update the pageProfile data.
+
+5. import the `useSetProfileData` hook and store it in a variable of `setProfileData` at the top of the file.
+```jsx
+function ProfilePage() {
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const currentUser = useCurrentUser();
+  const {id} = useParams();
+  const setProfileData = useSetProfileData();
+  ...
+```
+
+6. then, call it in the `try` block after the request to update the `pageProfile`'s value:
+```jsx
+try {
+    const [{data: pageProfile}] = await Promise.all([
+        axiosReq.get(`/profiles/${id}/`)
+    ])
+    setProfileData(prevState => ({
+        ...prevState,
+        pageProfile: {results: [pageProfile]}
+    }))
+} catch (err) {
+    console.log(err)
+}
+``` 
+
+7. after tthe `setProfileData` call, add a `setHasLoaded` function with a value of `true` to confirm the data has been updated:
+```jsx
+try {
+    const [{data: pageProfile}] = await Promise.all([
+        axiosReq.get(`/profiles/${id}/`)
+    ])
+    setProfileData(prevState => ({
+        ...prevState,
+        pageProfile: {results: [pageProfile]}
+    }))
+    setHasLoaded(true);
+} catch (err) {
+    console.log(err)
+}
+```
+
+8. with everything in place, call the `fetchData` function at the end of the `useEffect hook` and set the depencies for the function to `id` and `setProfileData`
+```jsx
+useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const [{data: pageProfile}] = await Promise.all([
+                axiosReq.get(`/profiles/${id}/`)
+            ])
+            setProfileData(prevState => ({
+                ...prevState,
+                pageProfile: {results: [pageProfile]}
+            }))
+            setHasLoaded(true);
+        } catch (err) {
+            console.log(err)
+        }
+    }
+    fetchData();
+}, [id, setProfileData])
+```
+> Next, we’ll replace the Image placeholder paragraph with an actual react-bootstrap Image component
+
+9. in the `mainProfile` const, replace the `<p>Image</p>` placeholder with a react-bootstrap `Image` component:
+    - give it a class of `styles.ProfileImage`
+    - give it the `roundedCircle` prop to make the image circular
+    - set its `src` to `profile.image`
+```jsx
+const mainProfile = (
+    <>
+      <Row noGutters className="px-3 text-center">
+        <Col lg={3} className="text-lg-left">
+          <Image 
+            className={styles.ProfileImage} 
+            roundedCircle 
+            src={profile.image}
+          />
+        </Col>
+```
+> When we see that in the preview we’re getting an error. The reason for this is that the JSX is trying to render the image before the API request for the profile is complete.
+
+10. prevent the error by using conditional chaining. add a `?` onto `profile` in the `src` of the rendering `Image` component. this will confirm if the source for the `src` has a value before rendering.
+```jsx
+const mainProfile = (
+    <>
+      <Row noGutters className="px-3 text-center">
+        <Col lg={3} className="text-lg-left">
+          <Image 
+            className={styles.ProfileImage} 
+            roundedCircle 
+            src={profile?.image}//  <--- conditional chaining (?) added
+          />
+        </Col>
+```
+
+11. check it works
+
+> Now we can move on to the profile stats.To start, we’ll display the profile owner’s username in the header, again we’ll use the conditional chaining to avoid the error we just talked about.
+
+12. in the `mainProfile` const, go to the `Profile username` placeholder and replace it with `{profile?.owner}` to display the profile owner's username
+13. remove and replace the `<p>Profile stats</p>` placehholder with a new `Row` component from react-bootstrap. it should have the bootstrap utility classes of `"justify-content-center no-gutters"`
+14. inside the `Row` tags, add a `Col` component from react-bootstrap, assign it the following props/parameters:
+    - `xs={3}`: assign it a columne width of 3
+    - assign a class of `"my-2"`
+15. inside the `Col` tags, insert a `div` wrapping the `{profile?.posts_count}`
+16. below that `div`, add another, that just says "posts"
+```jsx
+<Row noGutters className="px-3 text-center">
+    <Col lg={3} className="text-lg-left">
+        <Image 
+        className={styles.ProfileImage} 
+        roundedCircle 
+        src={profile?.image}
+        />
+    </Col>
+    <Col lg={6}>
+        <h3 className="m-2">{profile?.owner}</h3>
+        <Row className="justify-content-center no-gutters">
+        <Col xs={3} className="my-2">
+            <div>{profile?.posts_count}</div>
+            <div>Posts</div>
+        </Col>
+```
+17. repeat this process for `followers_count` and `following_count`
+```jsx
+<Row className="justify-content-center no-gutters">
+    <Col xs={3} className="my-2">
+        <div>{profile?.posts_count}</div>
+        <div>Posts</div>
+    </Col>
+    <Col xs={3} className="my-2">
+        <div>{profile?.followers_count}</div>
+        <div>Followers</div>
+    </Col>
+    <Col xs={3} className="my-2">
+        <div>{profile?.following_count}</div>
+        <div>Following</div>
+    </Col>
+</Row>
+```
+> Ok, next we’ll add the conditional logic to display the follow/unfollow button for this profile. 
+
+### Follow/unfollow button
+
+18. add an `is_owner` variable that checks if the returned `username` value from the `currentUser` hook matches that of the `profile?.owner`
+19. copy the conditional statement that manages the follow/unfollow button in `Profile.js`, then, removeits `mobile` condition, and change its `following_id` condition to `profile?.following_id` as that variable has not been destructured in this file.
+    - [check out how to manually write this conditional code here](#followunfollow-buttons)
+```jsx
+    <Col xs={3} className="my-2">
+        <div>{profile?.following_count}</div>
+        <div>Following</div>
+    </Col>
+    </Row>
+</Col>
+<Col lg={3} className="text-lg-right">
+{currentUser && !is_owner && (
+        profile?.following_id ? (
+            <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+            onClick={() => {}}>Unfollow</Button>
+        ) : (
+            <Button className={`${btnStyles.Button} ${btnStyles.Black}`} 
+            onClick={() => {}}>Follow</Button>
+    ))}
+</Col>
+```
+> Finally, we’ll conditionally render a column to display the profile.content, checking that it is defined before trying to render it.
+
+20. after the closing `col` tag for the follow button conditionals, add a conditional statement that will render an additional column:
+    - the conditional statment will check if the profile has a `content` attribute with any value
+    - change the content inside the `Col` from the placeholder text to the value of `{profile.content}`
+```jsx
+<Col lg={3} className="text-lg-right">
+    {currentUser && !is_owner && (
+            profile?.following_id ? (
+                <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+                onClick={() => {}}>Unfollow</Button>
+            ) : (
+                <Button className={`${btnStyles.Button} ${btnStyles.Black}`} 
+                onClick={() => {}}>Follow</Button>
+        ))}
+    </Col>
+    {profile?.content && (<Col className="p-3">{profile.content}</Col>)}
+    </Row>
+```
+_______________________________________________________________________________
+
+## Challenge: Displaying the Posts for a Profile
