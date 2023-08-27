@@ -214,6 +214,8 @@
 34. [Challenge: Displaying the Posts for a Profile](#challenge-displaying-the-posts-for-a-profile)
     - [solution code](#displaying-the-posts-for-a-profile-solution-code)
 
+35. [Following Profiles](#following-profiles)
+    - Video: https://youtu.be/VjshVKG3Otg
 _________________________
 
 ## Getting set up
@@ -5402,3 +5404,359 @@ In ProfilePage.js:
 
 ________________________________________________________________________
 
+## Following Profiles
+
+- follow/unfollow logic
+
+> As we have all our ProfileData and the function to set it in the ProfileDataContext file, that’s where we’ll define our handleFollow async function.
+
+go to `ProfileDataContext.js`
+1. after/below the call to the `useCurrentUser` hook, create a `handleFollow` `async` function that takes `clickedProfile` as an argument.
+2. inside the function, add a `try/catch` block
+3. in the `try` block, make an `axiosRes.post` request to the path: `/followers/`, but add an object to the path which will be a KVP of `followed: clickedProfile.id`, destructure the response into a `data` variable
+```jsx
+const handleFollow = async (clickedProfile) => {
+    try {
+        const {data} = await axiosRes.post('/followers/', {
+            followed: clickedProfile.id
+        })
+    } catch (err) {
+        console.log(err)
+    }
+}
+```
+> The data we’ll send is information about what profile the user just followed, which is the id of the profile the user just clicked. Ok, now we have to expose the handleFollow function in the ProfileDataContext.Provider
+
+> Ok, now we have to expose the handleFollow function in the ProfileDataContext.Provider so that the Profile components have access to it when the follow button is clicked.
+
+4. in the return statement, inside the `SetProfileDataContext.Provider` opening tag, amend the `value` prop to include the `handleFollow` function in addition to the `setProfileData` function., wrap the 2 functions in a set of additional curly braces
+```jsx
+return (
+    <ProfileDataContext.Provider value={profileData}>
+    <SetProfileDataContext.Provider value={ {setProfileData, handleFollow} }>
+        {children}
+    </SetProfileDataContext.Provider>
+    </ProfileDataContext.Provider>
+)
+```
+> Now that we’re returning multiple functions within an object rather than a single function, we’ll have to destructure setProfileData in ProfilePage.js, where we called our useSetProfileData hook before. We’ll also have to destructure handleFollow.
+
+5. go to `ProfilePage.js`. amend the `setProfileData` const that calls the `useSetProfileData` function to be destrcutured into `setProfileData` and `handleFollow`
+```jsx
+function ProfilePage() {
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const currentUser = useCurrentUser();
+  const {id} = useParams();
+  const { pageProfile } = useProfileData();
+  const [profile] = pageProfile.results;
+  const {setProfileData, handleFollow} = useSetProfileData(); // <--- newly destructured
+```
+> Let’s now go to the follow button and call the handleFollow function with the profile in the onClick attribute.
+
+6. go to the `mainProfile` const, in the ternary statement, where the follow button is being called, amend the `Button`'s onClick attribute to run the `handleFollow` function, taking a parameter of `profile`
+```jsx
+<Col lg={3} className="text-lg-right">
+    {currentUser && !is_owner && (
+            profile?.following_id ? (
+                <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+                onClick={() => {}}>Unfollow</Button>
+            ) : (
+                <Button className={`${btnStyles.Button} ${btnStyles.Black}`} 
+                onClick={() => handleFollow(profile)}>Follow</Button>
+        ))}
+</Col>
+```
+> Ok now that we added the handleFollow function and made sure things won’t break in ProfilePage.js, let’s go to the Profile.js file so that we can add our handleFollow function to our follow button there, too.
+
+7. go to `Profile.js`
+8. above the return statement, import `useSetProfileData` and destructure the `handleFollow` function from it.
+```jsx
+const {handleFollow} = useSetProfileData();
+
+return (...
+```
+
+9. add it as the function for the onClick attribute of the follow button in the return statement
+```jsx
+<div className={`text-right ${!mobile && 'ml-auto'}`}>
+            {!mobile && currentUser && !is_owner && (
+                following_id ? (
+                    <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+                    onClick={() => {}}>Unfollow</Button>
+                ) : (
+                    <Button className={`${btnStyles.Button} ${btnStyles.Black}`} 
+                    onClick={() => handleFollow(profile)}>Follow</Button> // <-----------
+            ))}
+        </div>
+```
+> Now if we go to the ProfilePage and click on a ‘follow’ button, nothing seems to have happened. If we refresh though, we can see that we are indeed following a profile. The button says ‘unfollow’ and the pageProfile’s followers count increased by one.
+
+> What happened was we made a network request to follow a profile in the background and all the associated data was updated on the server. When we refreshed the page, all the up-to–date data was fetched.
+
+> What we have to do now, is reflect all these changes on the client side, so that we don’t have to refresh the page every time we click the follow button.
+
+> when we click on a profile in our popularProfiles component, we’ll have to map over every single profile in the state one by one, and consider the following cases for each.
+
+> If the id of the profile in the array is the same as the one we clicked, we’ll update its following_id so that the unfollow button is rendered. And it'll also increase its followers_count by one.
+
+> If it is the profile of the logged in user, we’ll increase their following count by one, to reflect that the user has just followed another profile.
+
+> Finally, in case none of these are true, we’ll just return the profile as is without changing anything.
+
+10. go back to `ProfileDataContext.js`
+11. inside the `try` block of `handleFollow`, call the `setProfileData` function and pass it `prevState` as its argument.
+    - `spread` `prevState`
+```jsx
+const handleFollow = async (clickedProfile) => {
+        try {
+            const {data} = await axiosRes.post('/followers/', {
+                followed: clickedProfile.id
+            });
+
+            setProfileData(prevState => ({
+                ...prevState, // <---- setProfileData and stuff
+                
+            }))
+        } catch (err) {
+            console.log(err)
+        }
+    }
+```
+
+12. after `spread`ing the `prevState`, update the `popularProfiles` prop with the an object:
+    - inside the object, `spread` the `popularProfiles` of `prevState`
+```jsx
+try {
+    const {data} = await axiosRes.post('/followers/', {
+        followed: clickedProfile.id
+    });
+
+    setProfileData(prevState => ({
+        ...prevState,
+        popularProfiles: { // <--- second update
+            ...prevState.popularProfiles,
+        }
+
+    }))
+```
+
+13. then, **inside** the `popularProfiles` prop update inside `setProfileData`, update the `results` property by `map`ping the the `prevState` of the `popularProfiles.results`, 
+    - inside the `map` method, pass it a callback of `profile` and then inside its arrow function `return` a ternary statement that checks if `profile.id` matches the `clickedProfile.id`
+    - also add an `else if` that checks if the current user `is_owner` of a `profile`
+```jsx
+setProfileData(prevState => ({
+    ...prevState,
+    popularProfiles: {
+        ...prevState.popularProfiles,
+        results: prevState.popularProfiles.results.map(profile => {
+            return profile.id === clickedProfile.id
+            ? // this is the profile i clicked on,
+                // update its followers count and set its following id
+                {}
+            : profile.is_owner
+            ? // tis is the profile of the logged in user
+                //update its following count
+                {}
+            : // this is not the profile the user clicked on
+                // or the profile the user owns, so just return unchanged
+                {};
+        })
+    }
+}))
+```
+> In the first part, we’ll check if the profile in the array we’re iterating over is the same one the user just clicked on.
+
+> So if their id’s are the same, we’ll return the profile object, increasing its followers_count by one and setting its following_id to data.id.
+
+14. in the first block for the ternary:
+    - `spread` the `profile` in that iteration of the `map` functions loop
+    - update the `followers_count` with the value of the `profile`'s `followers_count + 1`
+    - assign the `following_id` the value of the `id` from the `data` in the request
+```jsx
+ setProfileData(prevState => ({
+                ...prevState,
+                popularProfiles: {
+                    ...prevState.popularProfiles,
+                    results: prevState.popularProfiles.results.map(profile => {
+                        return profile.id === clickedProfile.id
+                        ? // this is the profile i clicked on,
+                          // update its followers count and set its following id
+                          {
+                            ...profile,
+{/* updated values --->*/}  followers_count: profile.followers_count + 1,
+                            following_id: data.id
+                          }
+                        : profile.is_owner
+                        ? // tis is the profile of the logged in user
+                          //update its following count
+                          {}
+                        : // this is not the profile the user clicked on
+                          // or the profile the user owns, so just return unchanged
+                          {};
+                    })
+                }
+            }))
+``` 
+
+15. for the second block of the ternary:
+    - `spread` `profile`
+    - update the `following_count` to the value of the `profile`'s `following_count + 1`
+```jsx
+results: prevState.popularProfiles.results.map(profile => {
+    return profile.id === clickedProfile.id
+    ? // this is the profile i clicked on,
+        // update its followers count and set its following id
+        {
+        ...profile,
+        followers_count: profile.followers_count + 1,
+        following_id: data.id
+        }
+    : profile.is_owner
+    ? // tis is the profile of the logged in user
+        //update its following count
+        {
+        ...profile, following_count: profile.following_count + 1
+        }
+    : // this is not the profile the user clicked on
+        // or the profile the user owns, so just return unchanged
+        {};
+})
+```
+
+16. for the last block, remove the `{}` and just call the `profile`. as no changes need to be made
+```jsx
+return profile.id === clickedProfile.id
+    ? // this is the profile i clicked on,
+        // update its followers count and set its following id
+        {
+        ...profile,
+        followers_count: profile.followers_count + 1,
+        following_id: data.id
+        }
+    : profile.is_owner
+    ? // tis is the profile of the logged in user
+        //update its following count
+        {
+        ...profile, following_count: profile.following_count + 1
+        }
+    : // this is not the profile the user clicked on
+        // or the profile the user owns, so just return unchanged
+        profile;
+```
+
+17. check it works
+
+> We can see the button changed to ‘unfollow’, as in our setProfileData function we updated the popularProfiles.
+
+> However, I just liked a profile but my following count didn’t budge, even though if I refresh the page we can see it was updated in our API.
+
+> So to get my statistics here to update immediately, we need to run the same code again on the pageProfile object as well, as that data is in a separate array.
+
+> Even though this array only contains one item, we deliberately put our pageProfile in an array so that we have the same data type as the popularProfiles array, making it very easy for us to reuse our map code from before.
+
+18. in the call to `setProfileData` in `handleFollow`, after `spread`ing `prevState`, add a `pageProfile` prop update to the `results` array of `pageProfile` with the value of `prevState.pageProfile.results`
+```jsx
+setProfileData(prevState => ({
+    ...prevState,
+    pageProfile: { // <--- new prop update added
+        results: prevState.pageProfile.results
+    },
+    popularProfiles: {
+        ...prevState.popularProfiles,
+        results: prevState.popularProfiles.results.map(profile => {
+```
+19. copy the entire `map` function from inside the `popularProfiles` update directly below the newly created `pageProfile`s one created above.
+    - paste/append that map function onto the `pageProfile` `results` update:
+```jsx
+setProfileData(prevState => ({
+                ...prevState,
+                pageProfile: {
+                    results: prevState.pageProfile.results.map(profile => {
+{/* identical to */}    return profile.id === clickedProfile.id
+{/* the map method */}  ? {
+{/* below */}               ...profile,
+{/* this one */}            followers_count: profile.followers_count + 1,
+                            following_id: data.id
+                        } : profile.is_owner
+                        ? {
+                            ...profile, following_count: profile.following_count + 1
+                        } : profile;
+                    })
+                },
+                popularProfiles: {
+                    ...prevState.popularProfiles,
+                    results: prevState.popularProfiles.results.map(profile => {
+                        return profile.id === clickedProfile.id
+                        ? // this is the profile i clicked on,
+                          // update its followers count and set its following id
+                          {
+                            ...profile,
+                            followers_count: profile.followers_count + 1,
+                            following_id: data.id
+                          }
+                        : profile.is_owner
+                        ? // tis is the profile of the logged in user
+                          //update its following count
+                          {
+                            ...profile, following_count: profile.following_count + 1
+                          }
+                        : // this is not the profile the user clicked on
+                          // or the profile the user owns, so just return unchanged
+                          profile;
+                    })
+                }
+            }))
+```
+20. as this code is lengthy and repetitive, refactor it into a file of its own in the `utils` file
+    - go to `Utils.js`
+    - `export` and create a const function called `followHelper`, inside it, copy/paste in the entire conditional statement just created in the previous steps:
+        - > We’ll need to pass the helper function three arguments: the profile from the array we’re currently iterating over, the clickedProfile and the following_id.
+```jsx
+export const followHelper = (profile, clickedProfile, following_id) => {
+     //                                               ^^^^^^^^^^^^^
+    // This is the id of the data returned by the API when we make the request to follow a user.
+    return profile.id === clickedProfile.id
+        ? // this is the profile i clicked on,
+            // update its followers count and set its following id
+            {
+            ...profile,
+            followers_count: profile.followers_count + 1,
+            following_id: data.id
+            }
+        : profile.is_owner
+        ? // tis is the profile of the logged in user
+            //update its following count
+            {
+            ...profile, following_count: profile.following_count + 1
+            }
+        : // this is not the profile the user clicked on
+            // or the profile the user owns, so just return unchanged
+            profile;
+}
+```
+21. As we’re passing data.id into our helper function as an argument named following_id, we can update the value of the same name, so we can remove data.id from the `data.id` part of the `following_id` update in the truth/first block of the ternary.
+```jsx
+// comments removed, as it was getting a bit too pine fresh.
+ return profile.id === clickedProfile.id
+        ? 
+        {
+        ...profile,
+        followers_count: profile.followers_count + 1,
+        following_id // <--- no more data.id!
+        }
+        : profile.is_owner
+        ? 
+        {
+        ...profile, following_count: profile.following_count + 1
+        }
+        : 
+        profile;
+```
+
+22. go back to the `handleFollow` function in `ProfileDataContext.js.`
+23. inside the `map` method of the updating of `popularProfiles`, remove the ternary block and autoImport the new `followHelper` function in its place
+    - pass it the arguments `profile`, `clickedProfile` and `data.id`
+24. repeat this process for the updating of `pageProfile`
+```jsx
+
+```
