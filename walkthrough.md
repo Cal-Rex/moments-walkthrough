@@ -5925,3 +5925,120 @@ return (
         <PopularProfiles />
 </Col>
 ```
+
+__________________________________________________________________
+
+## Text Instructions: Editing the profile
+
+Instructions
+Now that we have the profile page working. We need to add a dropdown menu for users to edit their profile and update their username or password. As almost all of this code is not new to you, we’ll provide you with the files and steps to add into your project. And then we’ll take a moment to explain one small section of code that is new.
+
+
+Note: [Using this Source Code Link](https://github.com/mr-fibonacci/moments/tree/703c2f453c98e61f9df91981f8df973640569afc), please follow the steps below to add the relevant components to your project.
+
+**Part 1: In MoreDropdown.js**
+
+1. Add the following import:
+```jsx
+import { useHistory } from "react-router";
+```
+
+2. Add and export the ProfileEditDropdown component
+```jsx
+export function ProfileEditDropdown({ id }) {
+  const history = useHistory();
+  return (
+    <Dropdown className={`ml-auto px-3 ${styles.Absolute}`} drop="left">
+      <Dropdown.Toggle as={ThreeDots} />
+      <Dropdown.Menu>
+        <Dropdown.Item
+          onClick={() => history.push(`/profiles/${id}/edit`)}
+          aria-label="edit-profile"
+        >
+          <i className="fas fa-edit" /> edit profile
+        </Dropdown.Item>
+        <Dropdown.Item
+          onClick={() => history.push(`/profiles/${id}/edit/username`)}
+          aria-label="edit-username"
+        >
+          <i className="far fa-id-card" />
+          change username
+        </Dropdown.Item>
+        <Dropdown.Item
+          onClick={() => history.push(`/profiles/${id}/edit/password`)}
+          aria-label="edit-password"
+        >
+          <i className="fas fa-key" />
+          change password
+        </Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>
+  );
+}
+```
+
+**Part 2: In ProfilePage.js**
+
+3. Add the following import
+```jsx
+import { ProfileEditDropdown } from "../../components/MoreDropdown";
+```
+
+4. In the mainProfile JSX, add the following code inside the fragment, above the 1st Row component
+```jsx
+{profile?.is_owner && <ProfileEditDropdown id={profile?.id} />}
+```
+
+**Part 3: Add Boilerplate**
+
+5. Add UsernameForm.js to the profiles directory, and [paste in the code from the source code provided.](https://github.com/Code-Institute-Solutions/moments/blob/703c2f453c98e61f9df91981f8df973640569afc/src/pages/profiles/UsernameForm.js)
+6. Add UserPasswordForm.js to the profiles directory, and [paste in the code from the source code provided.](https://github.com/Code-Institute-Solutions/moments/blob/703c2f453c98e61f9df91981f8df973640569afc/src/pages/profiles/UserPasswordForm.js)
+7. Add ProfileEditForm.js file to the profiles directory and [paste in the code from the source code provided.](https://github.com/Code-Institute-Solutions/moments/blob/703c2f453c98e61f9df91981f8df973640569afc/src/pages/profiles/ProfileEditForm.js)
+
+**Add the relevant routes in App.js:**
+5. add the following imports
+```jsx
+import UsernameForm from "./pages/profiles/UsernameForm";
+import UserPasswordForm from "./pages/profiles/UserPasswordForm";
+import ProfileEditForm from "./pages/profiles/ProfileEditForm";
+```
+6. Add the following routes (Above the "Page not found!" Route)
+```jsx
+<Route
+  exact
+  path="/profiles/:id/edit/username"
+  render={() => <UsernameForm />}
+/>
+<Route
+  exact
+  path="/profiles/:id/edit/password"
+  render={() => <UserPasswordForm />}
+/>
+<Route
+  exact
+  path="/profiles/:id/edit"
+  render={() => <ProfileEditForm />}
+/>
+```
+**To test your code**
+Log in and go to your profile. Then click the dropdown menu options and test that each option in the dropdown gives you the following functionality: Upload a profile image, give yourself a bio, change your username and/password
+
+**A final note**
+As we said at the top of this lesson, there is one small section of code that is new to this project. And that is in UsernameForm and UserPasswordForm where we check if the profile_id is the same as the id with code like this.
+```jsx
+if (currentUser?.profile_id?.toString() !== id) {
+  history.push("/");
+}
+```
+
+We’re relying on the currentUser value here, which is fetched asynchronously on mount. So if you were to refresh the page, you’d get redirected to home, because the currentUser is initially null. It takes a moment for the API response to come back saying that you’re actually logged in.
+
+Also, since the profile id is an integer, and the param id is a string, we need to convert the integer into a string using the toString() method before we can check that they are equal.
+
+Note: We could also have used != rather than having to use toString(), but the linter throws a warning with this.
+
+Spend a few moments reviewing the code to make sure you understand what's happening here.
+
+_________________________________________________________________________
+
+## Redirecting the User
