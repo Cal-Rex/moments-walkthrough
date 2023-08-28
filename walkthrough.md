@@ -216,6 +216,9 @@
 
 35. [Following Profiles](#following-profiles)
     - Video: https://youtu.be/VjshVKG3Otg
+
+36. [Challenge: Unfollowing Profiles](#challenge-unfollowing-profiles)
+    - Challenge
 _________________________
 
 ## Getting set up
@@ -5758,5 +5761,167 @@ export const followHelper = (profile, clickedProfile, following_id) => {
     - pass it the arguments `profile`, `clickedProfile` and `data.id`
 24. repeat this process for the updating of `pageProfile`
 ```jsx
+const handleFollow = async (clickedProfile) => {
+        try {
+            const {data} = await axiosRes.post('/followers/', {
+                followed: clickedProfile.id
+            });
 
+            setProfileData(prevState => ({
+                ...prevState,
+                pageProfile: {
+                    results: prevState.pageProfile.results.map(profile => followHelper(
+                        profile, clickedProfile, data.id // follow helper imported ^^^
+                        ))
+                },
+                popularProfiles: {
+                    ...prevState.popularProfiles,
+                    results: prevState.popularProfiles.results.map(profile => followHelper(
+                        profile, clickedProfile, data.id // follow helper imported ^^^
+                        ))
+                }
+            }))
+        } catch (err) {
+            console.log(err)
+        }
+    }
+```
+
+_______________________________________________________________________
+
+## Challenge: Unfollowing Profiles
+- [Challenge link](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+RA101+2021_T3/courseware/70a8c55db0504bbdb5bcc3bfcf580080/f2a43e76b6694b0c85d8bf5be2d9700f/?child=first)
+- [solution code](https://github.com/mr-fibonacci/moments/tree/7184267c052b3b969131925f1d06aec7be8949f8)
+
+**Challenge Description**
+In this challenge, you’ll add the functionality to unfollow a profile. Users will be able to click an unfollow button anywhere in the application and all of the relevant states will be kept in sync, just like we have done for the follow functionality
+
+Clicking an unfollow button will cause your following count to go down, and the followers count of the profile clicked will go down too.
+
+**Note:** We recommend referring back to the handleFollow and followHelper code when completing this challenge.
+
+**Steps**
+This challenge has 4 parts:
+
+**Part 1: ProfileDataContext.js**
+1. Define the handleUnfollow async function, that will accept clickedProfile as an argument too.
+```jsx
+const handleUnfollow = async (clickedProfile) => {
+    try {} catch (err) {}
+}
+```
+2. Inside, make a DELETE request to: `/followers/${clickedProfile.following_id}/` with the axiosRes instance.
+```jsx
+const handleUnfollow = async (clickedProfile) => {
+    try {
+        const {data} = await axiosRes.delete(`/followers/${clickedProfile.following_id}/`);
+    } catch (err) {}
+}
+```
+3. Call the setProfileData function and update the pageProfile and popularProfiles in the same way we did inside handleFollow, but call the unfollowHelper instead.
+```jsx
+const handleUnfollow = async (clickedProfile) => {
+        try {
+            const {data} = await axiosRes.delete(`/followers/${clickedProfile.following_id}/`);
+            setProfileData(prevState => ({
+                ...prevState,
+                pageProfile: {
+                    results: prevState.pageProfile.results.map(profile => unfollowHelper(
+                        profile, clickedProfile, data.id
+                        ))
+                },
+                popularProfiles: {
+                    ...prevState.popularProfiles,
+                    results: prevState.popularProfiles.results.map(profile => unfollowHelper(
+                        profile, clickedProfile, data.id
+                        ))
+                }
+            }))
+        } catch (err) {}
+    }
+```
+
+**Note:** In this case, we only need to pass the unfollowHelper 2 arguments. Which ones do you think are needed? (Compare with followHelper)
+
+**Part 2: utils.js**
+4. Define the unfollowHelper function.
+```jsx
+export const unfollowHelper = () => {}
+```
+5. Unlike followHelper, it should take two arguments, which ones do you think? (following_id no longer needed)
+```jsx
+export const unfollowHelper = (profile, clickedProfile) => {}
+```
+6. Base your unfollowHelper function on the followHelper, make appropriate adjustments where necessary to the functionality.
+```jsx
+export const unfollowHelper = (profile, clickedProfile) => {
+    return profile.id === clickedProfile.id
+    ? // this is the profile i clicked on,
+        // update its followers count and nulls the following id that's been deleted
+        {
+        ...profile,
+        followers_count: profile.followers_count - 1,
+        following_id: null,
+        }
+    : profile.is_owner
+    ? // this is the profile of the logged in user
+        //update its following count
+        {
+        ...profile, 
+        following_count: profile.following_count - 1
+        }
+    : // this is not the profile the user clicked on
+        // or the profile the user owns, so just return unchanged
+        profile;
+}
+```
+
+**Part 3: Wire things up properly**
+7. ProfileDataContext.js: pass the handleUnfollow to the appropriate Context Provider.
+```jsx
+ return (
+    <ProfileDataContext.Provider value={profileData}>
+    <SetProfileDataContext.Provider value={ {setProfileData, handleFollow, handleUnfollow} }>
+        {children}
+    </SetProfileDataContext.Provider>
+    </ProfileDataContext.Provider>
+)
+```
+8. ProfilePage.js: destructure handleUnfollow where calling the useSetProfileData hook and add the handleUnfollow functionality to the unfollow button.
+```jsx
+const {setProfileData, handleFollow, handleUnfollow} = useSetProfileData();
+...
+{currentUser && !is_owner && (
+    profile?.following_id ? (
+        <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+        onClick={() => handleUnfollow(profile)}>Unfollow</Button>
+    ) : ( ...
+```
+9. Profile.js: destructure handleUnfollow where calling the useSetProfileData hook and add the handleUnfollow functionality to the unfollow button.
+```jsx
+const {handleFollow, handleUnfollow} = useSetProfileData();
+...
+ <div className={`text-right ${!mobile && 'ml-auto'}`}>
+    {!mobile && currentUser && !is_owner && (
+        following_id ? (
+            <Button className={`${btnStyles.Button} ${btnStyles.BlackOutline}`}
+            onClick={() => handleUnfollow(profile)}>Unfollow</Button>
+```
+
+**Part 4: Replace the PopularProfiles placeholders on PostPage.**
+Now that we have the Follow/Unfollow functionality working, we can finally replace the PopularProfiles placeholders on PostPage
+
+10. In PostPage: Replace the PopularProfiles placeholders with the PopularProfiles Component (for both desktop and mobile).
+```jsx
+// PopularProfiles manually imported at top of file
+return (
+    <Row className="h-100">
+      <Col className="py-2 p-0 p-lg-2" lg={8}>
+        <PopularProfiles />
+        <Post {...post.results[0]} setPosts={setPost} postPage />
+        <Container className={appStyles.Content}>
+...
+<Col lg={4} className="d-none d-lg-block p-0 p-lg-2">
+        <PopularProfiles />
+</Col>
 ```
