@@ -6042,3 +6042,183 @@ Spend a few moments reviewing the code to make sure you understand what's happen
 _________________________________________________________________________
 
 ## Redirecting the User
+
+- Authorized users shouldn’t be able to access the sign in and sign up pages, but rather be redirected to the home page.
+- When Unauthorised users try to access the page to create a post, then should be redirected back to the home page.
+- If a user had signed in but their refresh token eventually expired, they will be redirected back to the page they were on previously.
+- If a new user registers and signs in, they’ll first go back to the sign up page. As it is the case that they’re now logged in, they’ll be instantaneously redirected again
+
+create a new file in the `hooks` folder called `useRedirect.js`
+1. inside, export and define a hook with the name `useRedirect`, it should take an argument of `userAuthStatus`
+```jsx
+export const useRedirect = (userAuthStatus) => {
+    
+}
+```
+> We’re going to programmatically redirect users back to the home page, so we’ll have to auto-import and call the useHistory hook to save the history object into a variable.
+
+2. inside the the function, create a `history` variable that calls the `useHistory` hook:
+```jsx
+import { useHistory } from "react-router-dom/cjs/react-router-dom"
+
+export const useRedirect = (userAuthStatus) => {
+    const history = useHistory()
+}
+```
+
+3. beneath `history`, create a `handleMount` `async` function that contains a `try/catch` block
+```jsx
+import { useEffect } from "react"
+import { useHistory } from "react-router-dom/cjs/react-router-dom"
+
+export const useRedirect = (userAuthStatus) => {
+    history = useHistory();
+
+    useEffect(() => {
+        const handleMount = async () => {
+            try {
+
+            } catch (err) {
+                console.log(err)
+            }
+        }
+    });
+};
+```
+> Inside the try block, we’ll make a post request to the dj-rest-auth/token/refresh endpoint with the default axios instance, which we’ll have to auto-import.
+
+4.  inside the try block make an `axios.post()` request to the path `'dj-rest-auth/token/refresh/'`
+```jsx
+export const useRedirect = (userAuthStatus) => {
+    const history = useHistory()
+
+    useEffect(() => {
+        const handleMount = async () => {
+            try {
+                await axios.post('dj-rest-auth/token/refresh/')
+                // We don’t need either of our axios interceptors here because
+                // this endpoint will let us know if the user is authenticated or not.
+                // The post request will act like a check as to whether the user 
+                // is currently logged in or not.
+            } catch (err) {
+                console.log(err)
+            }
+        }
+    })
+}
+```
+> If a user is logged in; the access token will be refreshed successfully, and any code left in the try block will be able to run. If they’re not logged in though, we’ll get a response with the 401 error, and then the code in our catch block will run.
+
+5. below the `axios.post` request, add an `if` statement that checks if the `userAuthStatus` is equal to `'loggedIn'`
+    - if its `true`, call the `history` function and `push` the user back tot he homepage path (`'/'`)
+```jsx
+ useEffect(() => {
+    const handleMount = async () => {
+        try {
+            await axios.post('dj-rest-auth/token/refresh/')
+            // if user is logged in, th code below will run
+            if (userAuthStatus === 'loggedIn') {
+                history.push('/')
+            }
+```
+
+6. in the `catch` block, add an if statement to check if the `userAuthStatus` is equal to `loggedOut`
+    - if its `true`, call the `history` function and `push` the user back tot he homepage path (`'/'`)
+```jsx
+try {
+    await axios.post('dj-rest-auth/token/refresh/')
+    // if user is logged in, th code below will run
+    if (userAuthStatus === 'loggedIn') {
+        history.push('/')
+    }
+} catch (err) {
+    // if user is not logged in, th code below will run
+    if (userAuthStatus === 'loggedOut') {
+        history.push('/')
+    }
+    console.log(err)
+}
+```
+
+7. outside of the `handleMount` function, but still inside `useEffect`, call the `handleMount` function, then, add the following ependencies to the `useEffect` hook: `[history, userAuthStatus]`
+```jsx
+export const useRedirect = (userAuthStatus) => {
+    const history = useHistory()
+
+    useEffect(() => {
+        const handleMount = async () => {
+            try {
+                await axios.post('dj-rest-auth/token/refresh/')
+                // if user is logged in, th code below will run
+                if (userAuthStatus === 'loggedIn') {
+                    history.push('/')
+                }
+            } catch (err) {
+                // if user is logged in, th code below will run
+                if (userAuthStatus === 'loggedOut') {
+                    history.push('/')
+                }
+                console.log(err)
+            }
+        }
+        handleMount()
+    }, [history, userAuthStatus]);
+};
+```
+
+> Great! Now all we have to do is call the hook where we need to use it. Let’s start with redirecting our logged in users away from the sign in and sign up forms.
+
+8. go to `SignInForm.js` and below the `setCurrentUSer` variable add a call to the `useRedirect` function, passing it a value of `'loggedIn'`
+```jsx
+import { useRedirect } from "../../hooks/useRedirect";
+
+function SignInForm() {
+    const setCurrentUser = useSetCurrentUser();
+    useRedirect('loggedIn')
+```
+> Let’s now update the redirect on successful sign in to send the user back rather than have them redirected to the home page.
+
+9.  go to the `handleSubmit` function and amend the call to `history` to `goBack` instead of `push`ing users to the homepage.
+```jsx
+const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+        const {data} = await axios.post('dj-rest-auth/login/', signInData);
+        setCurrentUser(data.user)
+        history.goBack(); // <-- updated
+    } catch(err){
+        console.log(err)
+        setErrors(err.response?.data)
+    }
+}
+```
+> We’ll also call our useRedirect hook in the SignUpForm
+
+10. go to the `signUpForm.js`, inside the `SignUpForm` function, at the top, call `useRedirect`, passing it a value of `'loggedIn'`
+```jsx
+const SignUpForm = () => {
+  useRedirect('loggedIn')
+  const [signUpData, setSignUpData] = useState({
+    username: '',
+    password1: '',
+    password2: '',
+  })
+```
+
+11. check that it works
+
+> Now let’s handle redirecting any logged out users away from the form to create a post.
+
+12. go to `PostCreateForm.js` , import the `useRedirect` hook and call it at the top of the function, passing it the `loggedOut` string
+```jsx
+import { useRedirect } from "../../hooks/useRedirect";
+
+function PostCreateForm() {
+  useRedirect('loggedOut')
+```
+
+13. check it works (shouldnt be able to access the /posts/create/ path when logged out)
+
+______________________________________________________________
+
+## 
