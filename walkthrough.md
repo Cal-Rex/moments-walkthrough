@@ -219,6 +219,25 @@
 
 36. [Challenge: Unfollowing Profiles](#challenge-unfollowing-profiles)
     - Challenge
+
+37. [Text Instructions: Editing the profile](#text-instructions-editing-the-profile)
+    - instructions
+
+38. [Redirecting the User](#redirecting-the-user)
+    - Video: https://youtu.be/JK2Ysdizxt8
+
+## 8. Finishing up and Testing
+
+39. [Testing in React - part 1](#testing-in-react---part-1)
+    - Video: https://youtu.be/OesI3N5VAaU
+    - so in this video we’ll focus on what you’ll need to know to work with testing React components and mocking API responses.
+    - In this video we’ll get ourselves set up
+    - [source code](https://github.com/mr-fibonacci/moments/tree/5ea7b13a4131a39f519c24e8421516df3ffb5018)
+    - [mocking with jest](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+JT101+2021_T1/courseware/3ff1b42de7174d29baa8e28deba1b717/658d56e6555044f6b4b5a97e629333c6/5?activate_block_id=block-v1%3ACodeInstitute%2BJT101%2B2021_T1%2Btype%40vertical%2Bblock%401e742c8d10004c77a9013e93db16eac1)
+    - [React testing library](https://testing-library.com/docs/react-testing-library/intro) 
+    - [React Query testing methods](https://testing-library.com/docs/queries/about)
+
+40. 
 _________________________
 
 ## Getting set up
@@ -6221,4 +6240,159 @@ function PostCreateForm() {
 
 ______________________________________________________________
 
-## 
+## Testing in React - part 1
+
+- so in this video we’ll focus on what you’ll need to know to work with testing React components and mocking API responses.
+- In this video we’ll get ourselves set up
+- [source code](https://github.com/mr-fibonacci/moments/tree/5ea7b13a4131a39f519c24e8421516df3ffb5018)
+- [mocking with jest](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+JT101+2021_T1/courseware/3ff1b42de7174d29baa8e28deba1b717/658d56e6555044f6b4b5a97e629333c6/5?activate_block_id=block-v1%3ACodeInstitute%2BJT101%2B2021_T1%2Btype%40vertical%2Bblock%401e742c8d10004c77a9013e93db16eac1)
+- [React testing library](https://testing-library.com/docs/react-testing-library/intro) 
+- [React Query testing methods](https://testing-library.com/docs/queries/about)
+
+reasons for using tests:
+- manual tests using an API can be slow
+- manual tests using an API is dependent on passing data over a network, so it has the potential to be bbuggy when te code is actually fine.
+- requests can be costly:
+    > Requests can be costly. When you come to work in a professional environment you’re likely to work with paid for 3rd party APIs. In this case, making constant API requests to test code may become very expensive
+
+fortunately, mock API responses can be created in tests using the react testing framework:
+> To do this, the React testing library recommends using a library called Mock Service Worker, which uses an API built into all modern browsers to intercept requests so that we can declaratively mock API responses. So let’s use it to create the two mock endpoints we need to test our NavBar component.
+
+1. install the mock service worker library in the CLI:
+    - `npm install msw --save-dev`
+        - > As we’ll only need it for testing, we’ll use the --save-dev tag at the end of the command. This way,I’ll have it saved as a dependency which we only use in the development version of our project.
+2. in the `src` folder create a new folder called `mocks`
+3. inside the `mocks` folder, create a file called `handlers.js`
+4. inside the new file, `export` an empty array called `handlers`
+```jsx
+export const handlers = []
+```
+
+> Next, we’ll need to grab our API base url for our mock responses.
+
+5. above the newly defined array, create a new variable called `baseURL` and give it a string value of the url to the heroku api. (this can be found in the `axiosDefaults.js` file, as the value of the `axios.defaults.baseURL` variable)
+```jsx
+const baseURL = "https://django-rest-walkthrough-8fb26a5960d5.herokuapp.com/"
+export const handlers = []
+```
+> Next, let’s auto import the rest object and define a mock response for a GET request for user details,
+
+6. import the `rest` object from `msw`
+7. inside the `handlers` array, use the newly imported `rest` object to make a `get` request and run an arrow function on the path of the `baseURL` variable appended with `dj-rest-auth/user/` pass **3** arguments to a callback function: `req`uest, `res`ponse and `c`on`t`e`x`t:
+```jsx
+import { rest } from "msw"
+
+const baseURL = "https://django-rest-walkthrough-8fb26a5960d5.herokuapp.com/"
+export const handlers = [
+    rest.get(`${baseURL}dj-rest-auth/user/`, (req, res, ctx) => {
+        
+    })
+]
+```
+> Inside, we’ll return a json response with a user object, just like a real response from our API would do. 
+
+8. inside the arrow function, `return` a `res`ponse of the `ctx` callback appended with the `json` function.
+```jsx
+export const handlers = [
+    rest.get(`${baseURL}dj-rest-auth/user/`, (req, res, ctx) => {
+        return res(
+            ctx.json()
+        );
+    }),
+];
+```
+9.  go to the app preview and make sure you are logged into an account. refresh the tokens (just to be sure) by logging out and back in again.
+    - for thie test the admin account is being used: u: admin, p: guest
+
+10. next, go to the deployed API app and manually check the json value returned from the `dj-rest-auth/user/` endpoint. it should return something like this:
+```json
+{
+    "pk":1,
+    "username":"admin",
+    "email":"",
+    "first_name":"",
+    "last_name":"",
+    "profile_id":1,
+    "profile_image":"https://res.cloudinary.com/deth0ifla/image/upload/v1/media/../samples/landscapes/girl-urban-view"
+}
+```
+
+11. copy this entire json object and past it inside the `.json()` function appended to the `ctx` callback in the `get` request of the `handlers` export inside handlers.js:
+```jsx
+// Now when our tests try to reach out to this endpoint to get the users details,
+// our mocked api request handlers will intercept the test request 
+// and respond with our provided data here, 
+// indicating that for my test Brian is the currently logged in user.
+export const handlers = [
+    rest.get(`${baseURL}dj-rest-auth/user/`, (req, res, ctx) => {
+        return res(
+            ctx.json(
+                { // imported json data from api
+                    "pk":1,
+                    "username":"admin",
+                    "email":"",
+                    "first_name":"",
+                    "last_name":"",
+                    "profile_id":1,
+                    "profile_image":"https://res.cloudinary.com/deth0ifla/image/upload/v1/media/../samples/landscapes/girl-urban-view"
+                }
+            )
+        );
+    }),
+];
+```
+> Now, the logout endpoint is going to be much easier. All we want to do is log out successfully with no errors. 
+
+12. in `handlers.js`, add a second value to the `handlers` array. it will be a `post` request using `rest` to the `dj-rest-auth/logout/` endpoint of the `baseUrl` that then runs an arrow function with callbacks of `req`, `res`, and `ctx`
+13. inside the function, `return` a `res`ponse of the `status` of the `ctx`, which should be `200`:
+```jsx
+export const handlers = [
+    rest.get(`${baseURL}dj-rest-auth/user/`, (req, res, ctx) => {
+        return res(
+            ctx.json(
+                {
+                    "pk":1,
+                    "username":"admin",
+                    "email":"",
+                    "first_name":"",
+                    "last_name":"",
+                    "profile_id":1,
+                    "profile_image":"https://res.cloudinary.com/deth0ifla/image/upload/v1/media/../samples/landscapes/girl-urban-view"
+                }
+            )
+        );
+    }), // second array value \/
+    rest.post(`${baseURL}dj-rest-auth/user/`, (req, res, ctx) => {
+        return res(ctx.status(200));
+    }),
+];
+```
+
+the tests are set up but now they need to be connected to the **mock service worker**
+
+- > Now, to connect the mock service worker to our project’s tests, we need to:
+    1. create a server instance with all the handlers defined in handlers.js
+    2. start the server before all tests are run
+    3. reset the handlers after each test
+        - > in case the default handlers are overwritten in any of the tests
+    4. close the server after all the tests are run
+
+14. go to `setupTests.js`
+15. import the `{setupServer}` function from the `'msw/node'` library
+16. define a variable called `server` that makes a call to the `setupServer` function, `spread`ing in the `handlers`(autoimported) variable as its argument
+```jsx
+import '@testing-library/jest-dom';
+import {setupServer} from 'msw/node'
+import {handlers} from '.mocks/handlers'
+
+const server = setupServer(...handlers)
+```
+> Now we can move onto the test setup and teardown.
+
+17. write the following 3 functions after the `server` variable:
+```jsx
+beforeAll(() => server.listen()); // We’ll first call the server’s listen method before all the tests
+afterEach(() => server.resetHandlers()); //  call resetHandlers after each test
+afterAll(() => server.close()); // and finally shut the server down after all the tests have been run
+```
+_____________________________________________________________________________
