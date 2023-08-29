@@ -6396,3 +6396,153 @@ afterEach(() => server.resetHandlers()); //  call resetHandlers after each test
 afterAll(() => server.close()); // and finally shut the server down after all the tests have been run
 ```
 _____________________________________________________________________________
+
+## Testing in React - part 2
+
+running tests that do the following:
+- check if the NavBar component renders
+- if the provifle avatar is shown for a logged in user
+- if the sign in and sign out links are shown to a user after they have clicked the sign in/out link
+
+test types covered:
+- Tests to check that a component can be run without any errors
+- tests to check that elements such as links are rendered on mount within the component
+- tests to check that certain elements such as links are rendered as a result of an asynchronous request after mounting
+- tests that simulate user interactions such as clicks
+
+steps:
+1. in the `components` folder, create a `__tests__` folder
+2. inside, create a new file: `NavBar.test.js`
+
+> we’ll create our first test to make sure the NavBar component gets rendered correctly.
+
+3. call a function called `test` and pass it the string argument `'renders NavBar'`, and runs an arrow function. inside the arrow function, call `return`, which should be autoImported:
+```jsx
+import { render } from "@testing-library/react"
+
+test('renders NavBar', () => {
+    render()
+})
+```
+> Then we’ll need to import the BrowserRouter as a Router component from the react-router-dom library, to wrap around
+our auto-imported NavBar
+
+4. at the top of the file, import `{BrowserRouter as Router}` from `'react-router-dom'`
+5. inside the `render()` function in the return add a `<Router>` component, inside its tags. Add the `<NavBar />` component
+    - make sure to also import the `NavBar` component
+```jsx
+import { render } from "@testing-library/react"
+import { BrowserRouter as Router } from "react-router-dom"
+import NavBar from '../NavBar'
+
+test('renders NavBar', () => {
+    render(
+        <Router>
+            <NavBar />
+        </Router>
+    )
+})
+```
+
+6. run `npm test` to test the render
+
+> If we run npm test, all we can see is green! If you’d like to check out the rendered HTML, you can always use the screen.debug method and call it in your test.
+
+7.  inside the `test` function but after the `render`, call the `screen.debug()` method.
+    - make sure to import this along with `render` at the top of the file
+```jsx
+import { render, screen } from "@testing-library/react" // <-- imported
+import { BrowserRouter as Router } from "react-router-dom"
+import NavBar from '../NavBar'
+
+test('renders NavBar', () => {
+    render(
+        <Router>
+            <NavBar />
+        </Router>
+    )
+    screen.debug(); // <-- added
+    // screen.debug works just like console.log
+    // you can put it in wherever you want.
+})
+```
+- **note**: One thing worth noting is that if you put it below an assertion, and the assertion throws an error, you won’t see anything printed to the terminal.
+
+> If we have a look at the terminal, we can see the printout of our navbar and its links to home, sign in and sign up pages. It’s a useful thing to know about for debugging your tests,
+
+8. comment out the `screen.debug` for the time being.
+
+ > If we have a look at the terminal, we can see the printout of our navbar and its links to home, sign in and sign up pages. It’s a useful thing to know about for debugging your tests,
+
+9. below the commented out `screen.debug`, create a variable called `signInLink` that uses the value of `screen`, appended with the function `.getByRole()`
+    - pass `.getByRole` an arguments of `link` and `{name: 'Sign in'}`, which will search links in the nav bar for ones called "Sign in"
+        > the value in the name object is case sensitivem so make sure it matches the value in your own link
+```jsx
+import { render, screen } from "@testing-library/react"
+import { BrowserRouter as Router } from "react-router-dom"
+import NavBar from '../NavBar'
+
+test('renders NavBar', () => {
+    render(
+        <Router>
+            <NavBar />
+        </Router>
+    )
+    // screen.debug();
+    const signinLink = screen.getByRole('link', {name: 'Sign In'})
+    // new line ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+})
+```
+> Now to check if the signInLink is present in the document,
+
+10. underneath the new const, call the `expect` function and pass in the `signInLink` variable. append the function with `.not.toBeInTheDocument` to make the test fail initially:
+```jsx
+import { render, screen } from "@testing-library/react"
+import { BrowserRouter as Router } from "react-router-dom"
+import NavBar from '../NavBar'
+
+test('renders NavBar', () => {
+    render(
+        <Router>
+            <NavBar />
+        </Router>
+    )
+    // screen.debug();
+    const signinLink = screen.getByRole('link', {name: 'Sign In'});
+    expect(signinLink).not.toBeInTheDocument();
+})
+```
+> Now if we remove the ‘not’ bit and save our file again, we can see that the test is passing.
+
+> Ok, now we’ll write a test to check that the link to the user profile avatar is rendered in our NavBar
+
+11. copy the whole `test` function and past a copy below itself to create a new test
+12. change the string argument of the test to `"renders link to the user profile for a logged in user"`
+13. as this test will have to check data normally fetched asynchronously. amend the arrow function to be `async`
+14. delete the lines of code for the `signInLink` test
+```jsx
+test('renders renders link to the user profile for a logged in user', async () => {
+    render(
+        <Router>
+            <NavBar />
+        </Router>
+    )
+})
+```
+> Our profile link will only show once the currentUser data is fetched, so for that we’ll need to render the CurrentUserProvider as well.
+
+15. import the `CurrentUserProvider` component and wrap the `NavBar` component, inside the `Router` component
+
+```jsx
+test('renders renders link to the user profile for a logged in user', async () => {
+    render(
+        <Router>
+            <CurrentUserProvider>
+                <NavBar />
+            </CurrentUserProvider>
+        </Router>
+    )
+});
+```
+
+16. beneath the render, define a variable called `profileAvatar` and have it `await` the profile avatar by calling `screen.findByText('Profile')`
