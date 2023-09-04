@@ -57,7 +57,7 @@ const NavBar = () => {
             <i className='fas fa-sign-in-alt'></i>Sign In
         </NavLink>
         <NavLink className={styles.NavLink} activeClassName={styles.Active} to="/signup">
-            <i className='fas fa-user-plus'></i>Sign up
+            <i className='fas fa-user-plus'></i>Sign Up
         </NavLink>
         </>
     )

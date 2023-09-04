@@ -6410,6 +6410,12 @@ test types covered:
 - tests to check that certain elements such as links are rendered as a result of an asynchronous request after mounting
 - tests that simulate user interactions such as clicks
 
+additional documentation:
+- [testing source code](https://github.com/mr-fibonacci/moments/tree/fd58d0bb11e37db437d098a462e8312ae293ba95)
+- [Mocking](https://learn.codeinstitute.net/courses/course-v1:CodeInstitute+JT101+2021_T1/courseware/3ff1b42de7174d29baa8e28deba1b717/658d56e6555044f6b4b5a97e629333c6/5?activate_block_id=block-v1%3ACodeInstitute%2BJT101%2B2021_T1%2Btype%40vertical%2Bblock%401e742c8d10004c77a9013e93db16eac1)
+- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro)
+- [Mock Service Worker Documentation](https://mswjs.io/docs/)
+
 steps:
 1. in the `components` folder, create a `__tests__` folder
 2. inside, create a new file: `NavBar.test.js`
@@ -6546,3 +6552,72 @@ test('renders renders link to the user profile for a logged in user', async () =
 ```
 
 16. beneath the render, define a variable called `profileAvatar` and have it `await` the profile avatar by calling `screen.findByText('Profile')`
+```jsx
+test('renders link to the user profile for a logged in user', async () => {
+    render(
+        <Router>
+            <CurrentUserProvider>
+                <NavBar />
+            </CurrentUserProvider>
+        </Router>
+    );
+
+    const profileAvatar = await screen.findByText("Profile");
+```
+> You probably noticed that we used a different query method this time to find the profileAvatar, we did this because the “profile” text we are searching for isn’t inside a link this time.
+- [learn more about querying in tests fromt he documentation here](https://mswjs.io/docs/)
+
+7. use the `expect` function to assert that the `profileAvatar` variable value should be in the document with the `toBeInTheDocument` function:
+```jsx
+const profileAvatar = await screen.findByText("Profile");
+// expect(profileAvatar).not.toBeInTheDocument();
+// ^^^ using the `not` call will try to assert that this item shouldnt be in the document
+expect(profileAvatar).toBeInTheDocument();
+```
+
+> Ok, for our final test, let’s make sure that once the currently logged in user clicks the Sign out link, the Sign in and Sign up links reappear.
+
+8. duplicate the second test in the file, place it after the test that was just written.
+9. rename the `test` string to `"renders sign in and dign up buttons again on logout"`
+10. delete the `ProfileAvatar`-specific code and define a new variable called `signOutLink`
+> Similar to the profile link, the sign out link isn’t present in the document on mount either. So, we will use a find method like last time.
+
+> This time we’ll use the findByRole method because it’s an asynchronous query.
+
+11. in the variable `signOutLink`, `await` a responce from a call to the `screen` by running the `findByRole` method on it, defining that we are looking for a `'link'` and the name of the link should be `Sign Out`:
+```jsx
+test('renders Sign in and Sign up buttons again on log out', async () => {
+    render(
+        <Router>
+            <CurrentUserProvider>
+                <NavBar />
+            </CurrentUserProvider>
+        </Router>
+    );
+
+        const signOutLink = await screen.findByRole('link', {name: 'Sign Out'})
+});
+```
+> Now, we need to simulate a user click event. The way to do this is by importing fireEvent from the React testing library.
+
+12. on the same line as the `render` and `screen` imports, import `fireEvent`
+
+> Then, inside our test we can call the click method on fireEvent, and pass it the signOutLink variable so that our user click is fired on our chosen element.
+
+13. beneath the `signOutLink` variable, call the `fireEvent` import and run the `click` method on it, passing it the `signOutLink` variable
+```jsx
+const signOutLink = await screen.findByRole('link', {name: 'Sign Out'});
+fireEvent.click(signOutLink);
+const signinLink = await screen.findByRole('link', {name: 'Sign In'});
+const signupLink = await screen.findByRole('link', {name: 'Sign Up'});
+```
+> With the sign out link clicked, all we have to do is wait for both sign in and sign up links to be rendered in our NavBar again, and then check that they are in the document.
+
+### BUG
+
+so during this step, the freEvent method would not work for me, will revisit this query if it occurs again in the main profject. but as it staands:
+- when running the test with fireEvent, if i run a `screen.debug()` beneath it, it can be seen in the log that the html on the page does not change. 
+- when the click happens, the the html structure _should_ shange to contain links for `'Sign In'` and `'Sign Up'`, but the screen debug shows that the `'Sign Out'` button remains
+
+
+14. 
