@@ -248,7 +248,11 @@
 
 ## 9. Text Instructions: Final Deployment
 
-
+1. Log in to heroku.com and open the dashboard for your react application (remember this is separate from the DRF application that runs your API)
+2. Select the “Deploy” tab in the dashboard
+3. Scroll down to the bottom and then select “Deploy Branch”
+4. Wait for your build to complete (you can click “view build log” to watch the process in a larger window)
+5. When you see the message “deployed to Heroku” in the build log, click the “open app” button at the top of the page.
 _________________________
 
 ## Getting set up
