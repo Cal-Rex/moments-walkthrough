@@ -237,7 +237,10 @@
     - [React testing library](https://testing-library.com/docs/react-testing-library/intro) 
     - [React Query testing methods](https://testing-library.com/docs/queries/about)
 
-40. 
+40. [Display a graphic and message for Page Not Found](#display-a-graphic-and-message-for-page-not-found)
+41. [Optimize your bootstrap imports](#optimize-your-bootstrap-imports)
+42. [Remove console.logs](#remove-consolelogs)
+43. []
 _________________________
 
 ## Getting set up
@@ -6619,5 +6622,357 @@ so during this step, the freEvent method would not work for me, will revisit thi
 - when running the test with fireEvent, if i run a `screen.debug()` beneath it, it can be seen in the log that the html on the page does not change. 
 - when the click happens, the the html structure _should_ shange to contain links for `'Sign In'` and `'Sign Up'`, but the screen debug shows that the `'Sign Out'` button remains
 
+___
 
-14. 
+## Cleaning up Errors
+- console errors due to failed token refresh requests when logged out
+- acceptable console errors and messages
+- npm warnings
+- using React.StrictMode
+- using localStorage
+- using timestamps and jwt-decode
+- [API errors via react](#api-errors-via-react)
+- [NPM Errors](#npm-errors)
+
+> First, let’s take a look at React.StrictMode. (in index.js)
+
+```jsx
+ReactDOM.render(
+  <React.StrictMode>
+    <Router>
+      <CurrentUserProvider>
+        <ProfileDataProvider>
+        <App />
+        </ProfileDataProvider>
+      </CurrentUserProvider>
+    </Router>
+  </React.StrictMode>,
+  document.getElementById('root')
+);
+```
+
+> The React.StrictMode component lives in index.js and wraps around all of our other contexts and components. It is a tool for highlighting potential problems in an application by running additional checks and warnings on the application.
+
+> Let’s go to our preview, and make sure we are logged out. Then if we open the console and refresh the home page, we’d see that this error here is telling us that findDOMNode is deprecated in StrictMode. Since StrictMode is for development purposes only and we are getting ready for our final deployment, we can remove it.
+
+1. go to `index.js` and remove the `React.StrictMode` tags, be sure to keep the comma
+```jsx
+ReactDOM.render(
+    <Router> {/*tag removed*/}
+      <CurrentUserProvider>
+        <ProfileDataProvider>
+        <App />
+        </ProfileDataProvider>
+      </CurrentUserProvider>
+    </Router>, {/*tag removed, comma kept*/}
+  document.getElementById('root')
+);
+```
+> Cool! Now if we go back to the Home page and refresh, we can see that the error is gone!
+
+> We can see that as an unauthenticated user, our code is making these unnecessary requests to refresh their access token each time we interact with the application. So, let’s adjust our code so that an unauthenticated user doesn’t make extra network requests to refresh their access token.
+
+2. in the terminal, install `jwt-decode`:
+    - `npm install jwt-decode`
+
+3. go to `Utils.js`
+
+> Let’s first start with a function to set a token timestamp in the browser storage.
+
+4. export a new const and name it `setTokenTimeStamp` and define an arrow function as its value tat takes an argument of `data`
+```jsx
+export const setTokenTimestamp = (data) => {
+    
+}
+```
+
+5. inside, create a const called `refreshTokenTimestamp` that calls the `jwtDecode` function that was just installed
+6. inside the `jwtDecode` function, pass it the argument of `data` if (`?`) and if so get its `refresh_token` value with dot notation.
+7. apply an expiry date on the result of the function by appending it with `.exp`
+```jsx
+export const setTokenTimestamp = (data) => {
+    const refreshTokenTimestamp = jwtDecode(data?.refresh_token).exp
+}
+```
+> Finally, we can save that value to the user's browser using localStorage
+
+8. inside `setTokenTimestamp`, beneath `refreshTokenTimestamp` make a call to `localStorage` and have it run the `setItem` method, passing it a label of `"refreshTokenTimestamp"` before passing it a second argument of `refreshTokenTimestamp`
+```jsx
+export const setTokenTimestamp = (data) => {
+    const refreshTokenTimestamp = jwtDecode(data?.refresh_token).exp
+    localStorage.setItem("refreshTokenTimestamp", refreshTokenTimestamp)
+}
+```
+> now let’s create a function that will return a boolean value that will tell us if we should refresh the users token or not.
+
+9. create and export a a const called `shouldRefreshToken` that runs an arrow function
+10. inside it, `return` `localStorage` prefixed with a double bang (`!!`) that runs the `getItem()` method that retrieves the `"refreshTokenTimestamp"` data that was stored with the previous function
+```jsx
+export const shouldRefreshToken = () => {
+    return !!localStorage.getItem("refreshTokenTimestamp")
+} // > this means the token will be refreshed only for a logged in user.
+```
+> Finally, we’ll write a third function to remove the localStorage value if the user logs out or their refresh token has expired.
+
+11. export a const called `removeTokenTimestamp` and pass it an arrow function.
+12. inside, use the `removeItem` method on `localStorage`, passing the argument of the `"refreshTokenTimestamp"`
+```jsx
+export const removeTokenTimestamp = () => {
+    localStorage.removeItem("refreshTokenTimestamp");
+};
+```
+> Now that we have all our utility functions written, we can go back to our components and call them where they are needed!
+
+> We’ll start with the SignInForm, because we want to set our time stamp value when a user signs into our application.
+
+13. go to `SignInForm.js`, inside the `handleSubmit` function, inside its `try` block, directly beneath the `setCurrentUser(data.user)` function, call the `setTokenTimestamp` and pass it the `data` object
+```jsx
+const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+        const {data} = await axios.post('dj-rest-auth/login/', signInData);
+        setCurrentUser(data.user);
+        setTokenTimestamp(data); // <-- insert here
+        history.goBack();
+    ...
+```
+> Now this function should extract the expiry date from the access token and save it to the user's browser in local storage.
+
+14. test its working
+> open up local storage in our browser by selecting “Application”, then “local storage”. Now when I sign in, we can see the new value for refreshTokenTimestamp being saved there. (in the file inside local storage)
+
+> The next utility function we created was the one to tell us if an expiry date exists in the users local storage. So that we can choose to run the refresh token code or not.
+
+15. go to `CurrentUserProvider` function inside `CurrentUserContext.js` in the `contexts folder`
+16. inside its `useMemo` function, within the `axiosReq.interceptors.request`, nest the entire `try/catch` black inside an if statement that checks if `shouldRefreshToken` is true (make sure it imports)
+```jsx
+// before
+useMemo(() => {
+    axiosReq.interceptors.request.use(
+        async (config) => {
+            try {
+                await axios.post('/dj-rest-auth/token/refresh/')
+            } catch(err){
+                setCurrentUser((prevCurrentUser) => {
+                    if (prevCurrentUser) {
+                        history.push('/signin')
+                    }
+                    return null
+                })
+                return config
+            }
+    ...
+// --------
+// after
+ useMemo(() => {
+    axiosReq.interceptors.request.use(
+        async (config) => {
+            if (shouldRefreshToken()) {
+                try {
+                    await axios.post('/dj-rest-auth/token/refresh/')
+                } catch(err){
+                    setCurrentUser((prevCurrentUser) => {
+                        if (prevCurrentUser) {
+                            history.push('/signin')
+                        }
+                        return null
+                    })
+                    return config
+                }
+            }
+``` 
+17. manually clear any tokens in local storage in devtools
+> Now let’s refresh the page. These three errors are always going to be there on mount for a logged out user, as exactly three network requests are needed to establish that a user is really logged out.
+18. scheck the preview shile being signed out, clear the console. when scrolling down the page no new errors should appear.
+> We’re not finished yet though, we also have to remove the token timestamp when needed.
+19. in `CurrentUserContext.js`, in the `catch` block of the `useMemo` function for the `axiosReq.interceptors.request`, add a call to the `removeTokenTimestamp` function (make sure to import)
+```jsx
+useMemo(() => {
+    axiosReq.interceptors.request.use(
+        async (config) => {
+            if (shouldRefreshToken()) {
+                try {
+                    await axios.post('/dj-rest-auth/token/refresh/')
+                } catch(err){
+                    setCurrentUser((prevCurrentUser) => {
+                        if (prevCurrentUser) {
+                            history.push('/signin')
+                        }
+                        return null
+                    }) // make sure its above the return statement!
+                    removeTokenTimestamp();
+                    return config
+                }
+            }
+```
+
+20. repeat this for the `axiosRes.interceptors.response`, which is directly beneath the `axiosReq.interceptors.request`. add the `removeTokenTimestamp` method to its `catch` block, after the call to the `setCurrentUser` function:
+```jsx
+...
+axiosRes.interceptors.response.use(
+    (response) => response, 
+    async (err) => {
+        if (err.response?.status === 401){
+            try{
+                await axios.post('/dj-rest-auth/token/refresh/')
+            } catch(err){
+                setCurrentUser(prevCurrentUser => {
+                    if (prevCurrentUser){
+                        history.push('/signin')
+                    }
+                    return null
+                });
+                removeTokenTimestamp();
+            }
+            return axios(err.config)
+        }
+        return Promise.reject(err)
+    }
+)
+```
+> The final place where we have to call the removeTokenTimestamp function is in the NavBar component when the user logs out. So we’ll auto-import it and call it inside the handleSignOut function.
+
+21. go to `NavBar.js`, inside the `handleSignOut` function, inside the `try` block, add a call to `removeTokenTimestamp()`
+```jsx
+const NavBar = () => {
+    const currentUser = useCurrentUser();
+    const setCurrentUser = useSetCurrentUser();
+
+    const {expanded, setExpanded, ref} = useClickOutsideToggle();
+
+    const handleSignOut = async () => {
+        try {
+            await axios.post("dj-rest-auth/logout/");
+            setCurrentUser(null);
+            removeTokenTimestamp(); // <-- added here
+        } catch (err) {
+            console.log(err);
+        }
+    };
+    ...
+```
+
+22. check it works by going to the preview, signing in and checking localstrorage. thereshould be atoken there. When a user signs out, the token should then be removed.
+
+### API errors via react
+
+> Ok, so now it is a good place to discuss API errors in general. 
+
+> If you see one in the console, you shouldn’t think that you messed up, but rather view it as feedback from the API.
+
+> Here are the examples that are absolutely fine: 
+- three 401s on mount when not logged in
+- 401 error when going to sign up/ sign in page
+- A 400 error when providing incorrect form input such as submitting the sign
+in form without entering a username. 
+- A 401 error when an access token has expired
+
+> Feedback errors such as these from the API are expected and you won’t
+lose marks for having them in your project. 
+
+### NPM errors
+
+23. in the terminal, run the command `npm audit`
+> NPM packages are built by many different developers, and often there are issues and concerns with dependencies between different packages. This may often result in warnings and errors.
+
+> The developers that create the packages are responsible for fixing these errors. When they create fixes they may release them as part of npm audit.
+
+> So we can load the available fixes with the command npm audit fix.
+
+24. run the command `npm audit fix` to fix any potential vulnerabilities.
+
+> It’s important for you to know that it is not your responsibility as a student to fix these NPM errors.
+
+> When you are working in a professional team, the senior developer or team leader will set the level of acceptable NPM vulnerabilities in a product. So don’t worry if you are still seeing errors after running the audit fix command, this will not affect your project marks.
+
+
+___
+
+## Display a graphic and message for Page Not Found
+
+1. Create a NotFound.js file inside the components folder
+2. Use the rafce snippet to create and export your new component.
+3. At the top of the file, import the no-results.png file as a NoResults variable
+4. Create the appropriate module.css file for your NotFound component and create a class to add a margin-top of 25vh.
+5. Import the css file into NotFound.js and add your chosen class name to the div.
+6. Inside the div, add an Asset component.
+7. Pass it the props of src set to the NoResults variable, and a message prop of “Sorry, the page you're looking for doesn't exist”
+8. In App.js, in the final route for “Page not found” replace the placeholder paragraph with your newly created NotFound component.
+
+___
+
+## Optimize your bootstrap imports
+
+> Because we have been using auto-imports for our components, our bootstrap imports have been done in a way that is not optimal for build time.
+
+> For example in NavBar.js, we have imports like this:
+```jsx
+ import { Navbar, Container, Nav } from "react-bootstrap";
+```
+
+> Which means the entire react-bootstrap library is imported and the NavBar, Container and Nav components are deconstructed from it.
+
+> The Bootstrap documentation recommends instead importing each component individually from their specific folder. Like this:
+```jsx
+import Navbar from "react-bootstrap/Navbar";
+import Container from "react-bootstrap/Container";
+import Nav from "react-bootstrap/Nav";
+```
+
+> This minimises the bootstrap build to only the components that are needed from the library.
+
+> We recommend you go through your components and adjust your react-bootstrap component imports with this in mind.
+
+**I didnt do this in the walkthrough project due to timeframe, may as well just do it on the real project**
+
+___
+
+## Remove console.logs
+
+> Console.logs are useful for debugging during development, but we don’t want to be printing data to the console in a completed application.
+
+1. > In many IDEs, you can use a search facility to run a text search for all your console.logs
+    - in the left toolbar, hit the magnifying glass, search for "`console.log`", it will return every instance of the phrase in all files in the project!
+2. > Comment out all console.logs that are logging errors (i.e. those in the 'catch' blocks)
+3. > Remove all the other console.logs.
+
+**Note:** For the console.logs inside the catch blocks, in a real world setting these would be left in the code and simply commented out. It is handy to have them easily accessible in your code in case you need to debug things later.
+
+___
+
+## Replace the application default title in index.html
+
+> In index.html, (located in the public folder) update the <title> element in the head from “React App” to “Moments” so that it is changed in the tab like this:
+
+___
+
+## Refetch posts on user login/logout
+
+In `PostsPage.js`:
+1. import the useCurrentUser hook:
+```jsx
+import { useCurrentUser } from "../../contexts/CurrentUserContext";
+```
+2. call it within the PostsPage component:
+```jsx
+const currentUser = useCurrentUser();
+```
+3. add it to the useEffect hook’s dependency array:
+```jsx
+}, [filter, query, pathname, currentUser]);
+```
+
+___
+
+## Add the Heroku deployment commands
+
+1. In `package.json` file, in the “scripts” section, add the following prebuild command:
+```json
+"heroku-prebuild": "npm install -g serve",
+```
+- This will install a package needed to serve our single page application on heroku
+
+2. Add a Procfile at the root of the project with the following web command:
+```Procfile
+web: serve -s build
+```
