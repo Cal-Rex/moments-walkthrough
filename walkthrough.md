@@ -237,10 +237,18 @@
     - [React testing library](https://testing-library.com/docs/react-testing-library/intro) 
     - [React Query testing methods](https://testing-library.com/docs/queries/about)
 
+## 8.5 text-only instructions to prepare project for deployment
+
 40. [Display a graphic and message for Page Not Found](#display-a-graphic-and-message-for-page-not-found)
 41. [Optimize your bootstrap imports](#optimize-your-bootstrap-imports)
 42. [Remove console.logs](#remove-consolelogs)
-43. []
+43. [Replace the application default title in index.html](#replace-the-application-default-title-in-indexhtml)
+44. [Refetch posts on user login/logout](#refetch-posts-on-user-loginlogout)
+45. [Add the Heroku deployment commands](#add-the-heroku-deployment-commands)
+
+## 9. Text Instructions: Final Deployment
+
+
 _________________________
 
 ## Getting set up
